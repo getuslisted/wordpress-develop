@@ -67,8 +67,10 @@ class LocalVerse_Core {
         $this->define_post_types(); // Ensure this is called
         $this->define_taxonomies(); // Ensure this is called and uncommented
 
-    add_action( 'init', array( $this, 'handle_listing_submission' ) ); // Add this line
+    add_action( 'init', array( $this, 'handle_listing_submission' ) );
+    add_action( 'init', array( $this, 'handle_review_submission' ) );
 
+    add_filter( 'query_vars', array( $this, 'add_custom_query_vars' ) ); // ADD THIS LINE
     }
 
     /**
@@ -477,6 +479,165 @@ class LocalVerse_Core {
 
         // Enqueue your plugin's public stylesheet (example)
         // wp_enqueue_style( $this->plugin_name . '-public', LOCALVERSE_PLUGIN_URL . 'assets/css/public-style.css', array(), $this->version, 'all' );
+    }
+
+    /**
+     * Handles the front-end review submission.
+     * Hooked to 'init'.
+     *
+     * @since 0.1.0
+     */
+    public function handle_review_submission() {
+        // Check if our form has been submitted and it's our action
+        // ... (existing code for handle_review_submission)
+        if ( $_SERVER['REQUEST_METHOD'] !== 'POST' || ! isset( $_POST['localverse_action'] ) || $_POST['localverse_action'] !== 'submit_review' ) {
+            return;
+        }
+
+        // Ensure user is logged in
+        if ( ! is_user_logged_in() ) {
+            // This should ideally be caught by page template restriction, but defense in depth.
+            // Redirect to login or show error. For now, simply exit.
+            return;
+        }
+
+        // Get the listing ID from the hidden form field
+        if ( ! isset( $_POST['listing_id'] ) || ! is_numeric( $_POST['listing_id'] ) ) {
+            // Invalid or missing listing ID
+            // Redirect back with error: wp_redirect( add_query_arg( 'review_submission_status', 'error', get_permalink( SOME_FALLBACK_PAGE_ID ) ) );
+            return;
+        }
+        $listing_id = intval( $_POST['listing_id'] );
+        $listing_permalink = get_permalink( $listing_id );
+        if ( ! $listing_permalink ) $listing_permalink = home_url(); // Fallback redirect
+
+        // Verify nonce (nonce includes listing_id)
+        if ( ! isset( $_POST['localverse_submit_review_nonce'] ) || ! wp_verify_nonce( $_POST['localverse_submit_review_nonce'], 'localverse_submit_review_action_' . $listing_id ) ) {
+            wp_redirect( add_query_arg( 'review_submission_status', 'nonce_failure', $listing_permalink ) );
+            exit;
+        }
+
+        // Honeypot field check
+        if ( ! empty( $_POST['lv_contact_me_by_fax_only_if_you_promise_to_never_contact_me_again'] ) ) {
+            // Detected spam submission through honeypot
+            wp_redirect( add_query_arg( 'review_submission_status', 'error', $listing_permalink ) ); // Generic error
+            exit;
+        }
+
+        // Capability check
+        if ( ! current_user_can( 'submit_localverse_review', $listing_id ) ) {
+            // $listing_id is passed as context, though our cap is general for now
+            wp_redirect( add_query_arg( 'review_submission_status', 'cap_failure', $listing_permalink ) );
+            // The form template would need to handle 'cap_failure' status message.
+            exit;
+        }
+
+        // --- Validation & Sanitization ---
+        $errors = array();
+        $rating = isset( $_POST['lv_review_rating'] ) ? intval( $_POST['lv_review_rating'] ) : 0;
+        $review_text = isset( $_POST['lv_review_text'] ) ? sanitize_textarea_field( $_POST['lv_review_text'] ) : '';
+
+        if ( $rating < 1 || $rating > 5 ) {
+            $errors[] = __( 'Please select a valid rating between 1 and 5 stars.', 'localverse' );
+        }
+        if ( empty( $review_text ) ) {
+            $errors[] = __( 'Please enter your review text.', 'localverse' );
+        }
+        // Max length for review text (optional)
+        // if ( strlen( $review_text ) > 2000 ) { $errors[] = 'Review text is too long.'; }
+
+
+        if ( ! empty( $errors ) ) {
+            // Store errors in a transient or session to display them, or use a generic message
+            // For now, generic validation error
+            wp_redirect( add_query_arg( array('review_submission_status' => 'validation_error', 'errors' => implode(',', $errors) ), $listing_permalink ) );
+            exit;
+        }
+
+        // --- Prepare Post Data for Review CPT ---
+        $current_user = wp_get_current_user();
+        $listing_post = get_post( $listing_id );
+        $listing_title = $listing_post ? $listing_post->post_title : __( 'a listing', 'localverse' );
+
+        // Auto-generate title for the review post
+        $review_title = sprintf(
+            /* translators: 1: Listing name, 2: User name, 3: Date */
+            __( 'Review for "%1$s" by %2$s on %3$s', 'localverse' ),
+            $listing_title,
+            $current_user->display_name,
+            date_i18n( get_option( 'date_format' ) ) // Localized date
+        );
+
+        $review_post_data = array(
+            'post_title'    => sanitize_text_field( $review_title ),
+            'post_content'  => $review_text, // Already sanitized
+            'post_status'   => 'publish', // Default to publish for now. Admin setting later.
+            'post_type'     => 'localverse_review',
+            'post_author'   => $current_user->ID,
+            // 'comment_status' => 'closed', // Or 'open' if using WP comments for replies to reviews
+        );
+
+        // Insert the review post into the database
+        $new_review_id = wp_insert_post( $review_post_data, true ); // Pass true to return WP_Error on failure
+
+        if ( is_wp_error( $new_review_id ) ) {
+            // Log error: error_log("Review submission failed: " . $new_review_id->get_error_message());
+            wp_redirect( add_query_arg( 'review_submission_status', 'error', $listing_permalink ) );
+            exit;
+        }
+
+        // --- Save Custom Fields (Post Meta) for the Review ---
+        update_post_meta( $new_review_id, '_lv_review_rating', $rating );
+        update_post_meta( $new_review_id, '_lv_review_listing_id', $listing_id );
+
+        // --- Handle Review Image Uploads ---
+        $uploaded_image_ids = array();
+        if ( isset( $_FILES['lv_review_images'] ) && !empty($_FILES['lv_review_images']['name'][0]) ) {
+            // Ensure these files are included for media_handle_upload()
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+
+            $files = $_FILES['lv_review_images'];
+            foreach ( $files['name'] as $key => $value ) {
+                if ( $files['name'][$key] ) {
+                    $file_array = array(
+                        'name'     => $files['name'][$key],
+                        'type'     => $files['type'][$key],
+                        'tmp_name' => $files['tmp_name'][$key],
+                        'error'    => $files['error'][$key],
+                        'size'     => $files['size'][$key]
+                    );
+                    // Let WordPress handle the upload and security.
+                    // Pass $new_review_id to attach the image to the review post.
+                    $attachment_id = media_handle_sideload( $file_array, $new_review_id );
+
+                    if ( ! is_wp_error( $attachment_id ) ) {
+                        $uploaded_image_ids[] = $attachment_id;
+                    } else {
+                        // Optional: Log error for individual image upload failure
+                        // error_log("Review image upload failed: " . $attachment_id->get_error_message());
+                    }
+                }
+            }
+            if ( ! empty( $uploaded_image_ids ) ) {
+                update_post_meta( $new_review_id, '_lv_review_image_ids', $uploaded_image_ids );
+            }
+        }
+
+        // --- Redirect on Success ---
+        wp_redirect( add_query_arg( 'review_submission_status', 'success#localverse-review-form-wrapper', $listing_permalink ) ); // Add hash to jump to form/reviews area
+        exit;
+    }
+
+    /**
+     * Add custom query variables.
+     * @param array $vars Existing query variables.
+     * @return array Modified query variables.
+     */
+    public function add_custom_query_vars( $vars ) {
+        $vars[] = 'paged_reviews'; // For review pagination
+        return $vars;
     }
 
    /**
