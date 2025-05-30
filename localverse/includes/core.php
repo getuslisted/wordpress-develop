@@ -154,7 +154,9 @@ class LocalVerse_Core {
 
         add_filter( 'single_template', array( $this, 'override_single_listing_template' ) );
         add_filter( 'archive_template', array( $this, 'override_archive_listing_template' ) );
-        add_filter( 'template_include', array( $this, 'include_submit_listing_template' ) ); // Add this line
+        add_filter( 'template_include', array( $this, 'include_submit_listing_template' ) );
+
+        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_public_styles_scripts' ) ); // New action
     }
 
     /**
@@ -310,6 +312,7 @@ class LocalVerse_Core {
      */
     public function handle_listing_submission() {
         // Check if our form has been submitted
+        // ... (existing code from handle_listing_submission)
         if ( ! isset( $_POST['localverse_action'] ) || $_POST['localverse_action'] !== 'submit_listing' ) {
             return;
         }
@@ -426,6 +429,39 @@ class LocalVerse_Core {
     wp_redirect( $final_redirect_url );
     exit;
 }
+
+    // New method to enqueue public-facing styles and scripts
+    public function enqueue_public_styles_scripts() {
+        $options = get_option( 'localverse_options' );
+        $api_key = isset( $options['google_maps_api_key'] ) ? $options['google_maps_api_key'] : '';
+        $maps_enabled = isset( $options['enable_google_maps'] ) ? (bool) $options['enable_google_maps'] : true;
+
+
+        // Conditionally enqueue Google Maps API for single listing pages
+        if ( $maps_enabled && !empty($api_key) && is_singular( 'localverse_listing' ) ) {
+            global $post;
+            // require_once LOCALVERSE_PLUGIN_DIR . 'includes/models/Listing.php'; // Ensure model is available
+            // $listing = new LocalVerse_Listing($post->ID); // Handled in template now.
+            // Only enqueue if the listing has some address components to geocode
+            // This check can be more robust by checking specific address fields from the $listing object
+
+            $listing_obj = new LocalVerse_Listing($post->ID); // Create object to check address
+            if ($listing_obj->is_valid() && $listing_obj->get_formatted_address('')) { // Check if address exists
+                 wp_enqueue_script(
+                    'google-maps-api',
+                    'https://maps.googleapis.com/maps/api/js?key=' . esc_attr( $api_key ) . '&callback=lvInitMap', // Added &callback=lvInitMap
+                    array(),
+                    null, // Version
+                    true  // In footer
+                );
+                // Inline script for map initialization can be added here or directly in the template
+                // For template, we'll add a placeholder div and JS there.
+            }
+        }
+
+        // Enqueue your plugin's public stylesheet (example)
+        // wp_enqueue_style( $this->plugin_name . '-public', LOCALVERSE_PLUGIN_URL . 'assets/css/public-style.css', array(), $this->version, 'all' );
+    }
 }
 
 /**

@@ -238,6 +238,69 @@ class LocalVerse_Listing {
         return $hours ? nl2br( esc_html( $hours ) ) : '';
     }
 
+    /**
+     * Get the raw image gallery IDs.
+     * @since 0.1.0
+     * @return array An array of attachment IDs, or an empty array.
+     */
+    public function get_image_gallery_ids() {
+        $ids_meta = $this->get_meta( '_lv_image_gallery_ids', true ); // Stored as array by metabox save
+        if ( is_array($ids_meta) ) {
+             return array_map( 'absint', $ids_meta); // Ensure all are positive integers
+        } elseif (!empty($ids_meta) && is_string($ids_meta)) { // Fallback if it was somehow saved as string
+            return array_filter( array_map( 'absint', explode( ',', $ids_meta ) ) );
+        }
+        return array();
+    }
+
+    /**
+     * Get processed image gallery data.
+     * @since 0.1.0
+     * @param string $thumbnail_size Slug for the thumbnail size.
+     * @param string $full_size Slug for the full image size (for linking).
+     * @return array Array of image data structures (thumb_url, full_url, alt, caption).
+     */
+    public function get_image_gallery_data( $thumbnail_size = 'thumbnail', $full_size = 'large' ) {
+        $gallery_ids = $this->get_image_gallery_ids();
+        $gallery_data = array();
+
+        if ( empty( $gallery_ids ) ) {
+            return $gallery_data;
+        }
+
+        foreach ( $gallery_ids as $id ) {
+            $thumb_url = wp_get_attachment_image_url( $id, $thumbnail_size );
+            $full_url  = wp_get_attachment_image_url( $id, $full_size );
+            $alt_text  = get_post_meta( $id, '_wp_attachment_image_alt', true );
+            $image_post = get_post( $id ); // To get caption if available
+            $caption   = $image_post ? $image_post->post_excerpt : '';
+
+
+            if ( $thumb_url && $full_url ) {
+                $gallery_data[] = array(
+                    'id'        => $id,
+                    'thumb_url' => $thumb_url,
+                    'full_url'  => $full_url,
+                    'alt'       => $alt_text ? $alt_text : get_the_title($id), // Fallback to title for alt
+                    'caption'   => $caption,
+                );
+            }
+        }
+        return $gallery_data;
+    }
+
+    /**
+     * Check if the listing is marked as verified.
+     *
+     * @since 0.1.0
+     * @return bool True if verified, false otherwise.
+     */
+    public function is_verified() {
+        if ( ! $this->is_valid() ) return false;
+        $is_verified = $this->get_meta( '_lv_is_verified', true );
+        return (bool) $is_verified; // Cast to boolean ('1' becomes true, '0' or empty becomes false)
+    }
+
     // Add more methods here later for:
     // - Handling verification status
     // - Retrieving images/attachments

@@ -44,6 +44,9 @@ if ( ! $listing_item->is_valid() ) {
         <header class="listing-item-header">
             <h2 class="listing-item-title">
                 <a href="<?php echo esc_url( $listing_item->get_permalink() ); ?>"><?php echo esc_html( $listing_item->get_title() ); ?></a>
+                <?php if ( $listing_item->is_verified() ) : ?>
+                    <span class="localverse-verified-badge-loop" style="color: #155724; font-size: 0.9em; margin-left: 8px; display: inline-block; vertical-align: middle;" title="<?php esc_attr_e('Verified Listing', 'localverse'); ?>">✔</span>
+                <?php endif; ?>
             </h2>
         </header><!-- .listing-item-header -->
 

@@ -119,6 +119,39 @@ class LocalVerse_Admin_Settings {
             'localverse-settings-admin', // Page
         'localverse_submission_settings_section' // Section
         );
+
+    // New Integrations Settings Section
+    add_settings_section(
+        'localverse_integrations_settings_section', // ID
+        __( 'Integrations Settings', 'localverse' ), // Title
+        array( $this, 'print_integrations_section_info' ), // Callback
+        'localverse-settings-admin' // Page
+    );
+
+    add_settings_field(
+        'google_maps_api_key', // ID
+        __( 'Google Maps API Key', 'localverse' ), // Title
+        array( $this, 'google_maps_api_key_callback' ), // Callback
+        'localverse-settings-admin', // Page
+        'localverse_integrations_settings_section' // Section
+    );
+     add_settings_field( // Placeholder for enable/disable map from later step
+        'enable_google_maps',
+        __( 'Enable Google Maps', 'localverse' ),
+        array( $this, 'enable_google_maps_callback' ),
+        'localverse-settings-admin',
+        'localverse_integrations_settings_section'
+    );
+
+    // Add new field for enabling Image Gallery (can be in Integrations or a new "Features" section)
+    // For simplicity, adding to Integrations for now.
+    add_settings_field(
+        'enable_image_gallery', // ID
+        __( 'Enable Image Gallery', 'localverse' ), // Title
+        array( $this, 'enable_image_gallery_callback' ), // Callback
+        'localverse-settings-admin', // Page
+        'localverse_integrations_settings_section' // Section
+    );
     }
 
     /**
@@ -134,22 +167,27 @@ class LocalVerse_Admin_Settings {
 
         // Sanitize default submission status
         if ( isset( $input['default_submission_status'] ) ) {
-            $allowed_statuses = array( 'publish', 'pending', 'draft' ); // Whitelist
+            $allowed_statuses = array( 'publish', 'pending', 'draft' );
             if ( in_array( $input['default_submission_status'], $allowed_statuses, true ) ) {
                 $new_input['default_submission_status'] = $input['default_submission_status'];
-            } else {
-                $new_input['default_submission_status'] = 'pending'; // Fallback
-            }
-        } else {
-            $new_input['default_submission_status'] = 'pending'; // Default if not set
+            } else { $new_input['default_submission_status'] = 'pending'; }
+        } else { $new_input['default_submission_status'] = 'pending';}
+
+        if ( isset( $input['submission_redirect_page'] ) ) {
+            $new_input['submission_redirect_page'] = absint( $input['submission_redirect_page'] );
+        } else { $new_input['submission_redirect_page'] = 0; }
+
+
+        // Sanitize Google Maps API Key
+        if ( isset( $input['google_maps_api_key'] ) ) {
+            $new_input['google_maps_api_key'] = sanitize_text_field( $input['google_maps_api_key'] );
         }
 
-        // Sanitize submission redirect page ID
-        if ( isset( $input['submission_redirect_page'] ) ) {
-            $new_input['submission_redirect_page'] = absint( $input['submission_redirect_page'] ); // Ensure it's a positive integer (0 for none)
-        } else {
-            $new_input['submission_redirect_page'] = 0; // Default if not set
-        }
+        // Sanitize enable_google_maps (from plan step 4)
+        $new_input['enable_google_maps'] = isset($input['enable_google_maps']) ? 1 : 0;
+
+    // Sanitize enable_image_gallery
+    $new_input['enable_image_gallery'] = isset( $input['enable_image_gallery'] ) ? 1 : 0;
 
         return $new_input;
     }
@@ -212,6 +250,40 @@ class LocalVerse_Admin_Settings {
             'option_none_value' => 0, // Value for "no page selected"
         ));
         echo '<p class="description">' . esc_html__( 'Select a page to redirect users to after successful listing submission. If none, redirects to the submission form page.', 'localverse' ) . '</p>';
+    }
+
+    // Callback for Integrations section info:
+    public function print_integrations_section_info() {
+        _e( 'Configure settings for third-party integrations:', 'localverse' );
+    }
+
+    // Callback for Google Maps API Key field:
+    public function google_maps_api_key_callback() {
+        $options = get_option( $this->option_name );
+        $api_key = isset( $options['google_maps_api_key'] ) ? $options['google_maps_api_key'] : '';
+        printf(
+            '<input type="text" id="google_maps_api_key" name="%s[google_maps_api_key]" value="%s" class="regular-text" />',
+            esc_attr( $this->option_name ),
+            esc_attr( $api_key )
+        );
+        echo '<p class="description">' . sprintf(__( 'Enter your Google Maps JavaScript API key. Get one from %s.', 'localverse' ), '<a href="https://cloud.google.com/maps-platform/" target="_blank">Google Cloud Platform</a>') . '</p>';
+    }
+
+    // Placeholder for enable_google_maps_callback from plan step 4
+    public function enable_google_maps_callback() {
+        $options = get_option( $this->option_name );
+        $checked = isset( $options['enable_google_maps'] ) ? $options['enable_google_maps'] : 1;
+        echo '<input type="checkbox" id="enable_google_maps" name="' . esc_attr( $this->option_name ) . '[enable_google_maps]" value="1" ' . checked( 1, $checked, false ) . ' />';
+        echo '<label for="enable_google_maps"> ' . __( 'Display Google Maps on listing pages (if API key is provided).', 'localverse' ) . '</label>';
+    }
+
+    // New callback for Enable Image Gallery field:
+    public function enable_image_gallery_callback() {
+        $options = get_option( $this->option_name );
+        // Default to true if not set.
+        $checked = isset( $options['enable_image_gallery'] ) ? $options['enable_image_gallery'] : 1;
+        echo '<input type="checkbox" id="enable_image_gallery" name="' . esc_attr( $this->option_name ) . '[enable_image_gallery]" value="1" ' . checked( 1, $checked, false ) . ' />';
+        echo '<label for="enable_image_gallery"> ' . __( 'Enable image gallery feature on listing pages.', 'localverse' ) . '</label>';
     }
 }
 

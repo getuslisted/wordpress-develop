@@ -31,8 +31,15 @@ $listing = new LocalVerse_Listing( $post );
 
             <article id="post-<?php echo esc_attr( $listing->id ); ?>" <?php post_class( '', $listing->id ); ?>>
                 <header class="entry-header">
-                    <?php echo get_the_post_thumbnail( $listing->id, 'large' ); // Display featured image ?>
+                    <?php echo get_the_post_thumbnail( $listing->id, 'large' ); ?>
                     <h1 class="entry-title"><?php echo esc_html( $listing->get_title() ); ?></h1>
+                    <?php if ( $listing->is_verified() ) : ?>
+                        <div class="localverse-verified-badge-wrapper">
+                            <span class="localverse-verified-badge" style="background-color: #d4edda; color: #155724; padding: 5px 10px; border-radius: 4px; font-size: 0.9em; border: 1px solid #c3e6cb; display: inline-block; margin-top: 5px;">
+                                <?php _e( '✔ Verified Listing', 'localverse' ); ?>
+                            </span>
+                        </div>
+                    <?php endif; ?>
                 </header><!-- .entry-header -->
 
                 <div class="entry-content">
@@ -83,6 +90,89 @@ $listing = new LocalVerse_Listing( $post );
                         <?php endif; ?>
 
                     </div><!-- .listing-details -->
+
+                        <?php
+                        // In localverse/templates/listing-single.php, inside the <div class="listing-details"> section:
+
+                        // ... (after address display, for example) ...
+                        $options = get_option( 'localverse_options' );
+                        $api_key_present = !empty( $options['google_maps_api_key'] );
+                        $maps_globally_enabled = isset( $options['enable_google_maps'] ) ? (bool) $options['enable_google_maps'] : true;
+                        $full_address = $listing->get_formatted_address(' '); // Use space for geocoding
+
+                        if ( $api_key_present && $maps_globally_enabled && !empty($full_address) ) : ?>
+                            <div class="listing-map-wrapper">
+                                <h3><?php _e( 'Location Map', 'localverse' ); ?></h3>
+                                <div id="localverse-listing-map" style="height: 400px; width: 100%;"></div>
+                                <script type="text/javascript">
+                                    function lvInitMap() {
+                                        const fullAddress = <?php echo json_encode($full_address); ?>;
+                                        const geocoder = new google.maps.Geocoder();
+                                        const mapElement = document.getElementById('localverse-listing-map');
+
+                                        if (!mapElement) {
+                                            console.error('Map element not found.');
+                                            return;
+                                        }
+                                        if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                                            console.error('Google Maps API not loaded.');
+                                            return;
+                                        }
+
+
+                                        geocoder.geocode( { 'address': fullAddress }, function(results, status) {
+                                            if (status === 'OK' && results[0]) {
+                                                const map = new google.maps.Map(mapElement, {
+                                                    zoom: 15,
+                                                    center: results[0].geometry.location
+                                                });
+                                                new google.maps.Marker({
+                                                    map: map,
+                                                    position: results[0].geometry.location
+                                                });
+                                            } else {
+                                                // console.error('Geocode was not successful for the following reason: ' + status);
+                                                mapElement.innerHTML = '<p><?php echo esc_js( __( 'Map could not be loaded for this address (Geocoding failed). Reason: ', 'localverse' ) ); ?>' + status + '</p>';
+
+                                            }
+                                        });
+                                    }
+                                    // If the Google Maps API script is loaded with a callback (like &callback=lvInitMap),
+                                    // lvInitMap will be called automatically.
+                                    // If not using callback in URL, you might need to call it manually or on window.load.
+                                    // However, the &callback=lvInitMap in wp_enqueue_script handles this.
+                                </script>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php // ... (rest of listing-single.php) ... ?>
+
+                        <?php
+                        // Display Image Gallery - Controlled by Admin Setting
+                        $plugin_options_gallery = get_option( 'localverse_options' );
+                        $gallery_enabled = isset( $plugin_options_gallery['enable_image_gallery'] ) ? (bool) $plugin_options_gallery['enable_image_gallery'] : true; // Default true
+
+                        if ( $gallery_enabled ) { // Check the global setting
+                            $gallery_images = $listing->get_image_gallery_data('medium', 'large'); // Or 'thumbnail', 'medium', etc.
+                            if ( ! empty( $gallery_images ) ) : ?>
+                                <div class="listing-image-gallery">
+                                    <h3><?php _e( 'Image Gallery', 'localverse' ); ?></h3>
+                                    <div class="gallery-items-wrapper" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                        <?php foreach ( $gallery_images as $image ) : ?>
+                                            <div class="gallery-item" style="flex: 1 0 150px; max-width: 200px;"> {/* Adjusted flex basis and max-width */}
+                                                <a href="<?php echo esc_url( $image['full_url'] ); ?>" target="_blank" title="<?php echo esc_attr( $image['caption'] ? $image['caption'] : $image['alt'] ); ?>">
+                                                    <img src="<?php echo esc_url( $image['thumb_url'] ); ?>" alt="<?php echo esc_attr( $image['alt'] ); ?>" style="max-width: 100%; height: auto; border: 1px solid #ddd; padding: 2px;" />
+                                                </a>
+                                                <?php if ( !empty( $image['caption'] ) ) : ?>
+                                                    <p class="gallery-item-caption" style="font-size: 0.9em; text-align: center;"><?php echo esc_html( $image['caption'] ); ?></p>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif;
+                        } // End $gallery_enabled check
+                        ?>
                 </div><!-- .entry-content -->
 
                 <footer class="entry-footer">
