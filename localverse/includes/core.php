@@ -155,8 +155,9 @@ class LocalVerse_Core {
         add_filter( 'single_template', array( $this, 'override_single_listing_template' ) );
         add_filter( 'archive_template', array( $this, 'override_archive_listing_template' ) );
         add_filter( 'template_include', array( $this, 'include_submit_listing_template' ) );
+        add_filter( 'template_include', array( $this, 'include_owner_dashboard_template' ) ); // ADD THIS LINE
 
-        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_public_styles_scripts' ) ); // New action
+        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_public_styles_scripts' ) );
     }
 
     /**
@@ -292,12 +293,17 @@ class LocalVerse_Core {
     public function include_submit_listing_template( $template ) {
         // The admin should create a page with the slug 'submit-listing'
         if ( is_page( 'submit-listing' ) ) {
+            if ( ! is_user_logged_in() ) {
+                // Redirect to login page, then back to the submission form after login
+                $redirect_url = wp_login_url( get_permalink() ); // get_permalink() here gets current page URL
+                wp_redirect( $redirect_url );
+                exit;
+            }
+            // Optional: Add role/capability check here if needed in the future
+            // For example: if ( !current_user_can('submit_localverse_listing_cap') ) { ... }
+
             $new_template = LOCALVERSE_PLUGIN_DIR . 'templates/submit-listing-form.php';
             if ( file_exists( $new_template ) ) {
-                // Enqueue media scripts if we plan to use wp.media for image uploads later
-                // if ( ! did_action( 'wp_enqueue_media' ) ) {
-                //     wp_enqueue_media();
-                // }
                 return $new_template;
             }
         }
@@ -311,124 +317,134 @@ class LocalVerse_Core {
      * @since 0.1.0
      */
     public function handle_listing_submission() {
-        // Check if our form has been submitted
-        // ... (existing code from handle_listing_submission)
-        if ( ! isset( $_POST['localverse_action'] ) || $_POST['localverse_action'] !== 'submit_listing' ) {
+        // Check if our form has been submitted via POST
+        if ( $_SERVER['REQUEST_METHOD'] !== 'POST' || ! isset( $_POST['localverse_action'] ) || $_POST['localverse_action'] !== 'submit_listing' ) {
+            // If not a POST request or not our action, do nothing further in this handler.
+            // The check for 'localverse_action' was already there, adding REQUEST_METHOD check for clarity.
             return;
         }
 
-        // Verify nonce
+        // Ensure user is logged in to process submission
+        if ( ! is_user_logged_in() ) {
+            // Let's redirect to the form page with a specific error message.
+            $form_page_url = get_permalink( get_page_by_path( 'submit-listing' ) );
+            if ($form_page_url) {
+                wp_redirect( add_query_arg( 'submission_status', 'login_required', $form_page_url ) );
+                exit;
+            } else {
+                // Fallback if submit page doesn't exist, redirect to home or login.
+                wp_redirect( wp_login_url( home_url() ) ); // Redirect to login, then to home.
+                exit;
+            }
+        }
+
+        // Optional: Add role/capability check here if needed in the future for submission processing
+        // For example: if ( !current_user_can('submit_localverse_listing_cap') ) { ... exit or redirect ... }
+
+
+        // ... (rest of the existing nonce check, validation, sanitization, post creation, etc.)
+        // Ensure the nonce check is one of the first things after confirming it's our form and user is logged in.
         if ( ! isset( $_POST['localverse_submit_listing_nonce'] ) || ! wp_verify_nonce( $_POST['localverse_submit_listing_nonce'], 'localverse_submit_listing_action' ) ) {
-            // Nonce is invalid, redirect back to form page with an error
-            // Assuming 'submit-listing' is the slug of the page with the form
-            $redirect_url = add_query_arg( 'submission_status', 'nonce_failure', get_permalink( get_page_by_path( 'submit-listing' ) ) );
+            $form_page_url = get_permalink( get_page_by_path( 'submit-listing' ) );
+            $redirect_url = $form_page_url ? add_query_arg( 'submission_status', 'nonce_failure', $form_page_url ) : home_url();
             wp_redirect( $redirect_url );
             exit;
         }
 
-        // --- Basic Validation & Sanitization ---
-        // Title is required
+        // Basic Validation & Sanitization (Title is required)
         if ( empty( $_POST['lv_title'] ) ) {
-            // Handle error - e.g., redirect with error message or store errors in a session/transient
-            // For simplicity, redirecting with a generic error for now.
-            $redirect_url = add_query_arg( 'submission_status', 'error', get_permalink( get_page_by_path( 'submit-listing' ) ) );
+            $form_page_url = get_permalink( get_page_by_path( 'submit-listing' ) );
+            $redirect_url = add_query_arg( 'submission_status', 'error', $form_page_url ? $form_page_url : home_url() );
             wp_redirect( $redirect_url );
             exit;
         }
-    // ... (all other sanitization as before) ...
-    $title            = sanitize_text_field( $_POST['lv_title'] );
-    $description      = isset( $_POST['lv_description'] ) ? sanitize_textarea_field( $_POST['lv_description'] ) : '';
-    $address_street   = isset( $_POST['lv_address_street'] ) ? sanitize_text_field( $_POST['lv_address_street'] ) : '';
-    $address_city     = isset( $_POST['lv_address_city'] ) ? sanitize_text_field( $_POST['lv_address_city'] ) : '';
-    $address_state    = isset( $_POST['lv_address_state'] ) ? sanitize_text_field( $_POST['lv_address_state'] ) : '';
-    $address_zip      = isset( $_POST['lv_address_zip'] ) ? sanitize_text_field( $_POST['lv_address_zip'] ) : '';
-    $address_country  = isset( $_POST['lv_address_country'] ) ? sanitize_text_field( $_POST['lv_address_country'] ) : '';
-    $contact_phone    = isset( $_POST['lv_contact_phone'] ) ? sanitize_text_field( $_POST['lv_contact_phone'] ) : '';
-    $contact_email    = isset( $_POST['lv_contact_email'] ) ? sanitize_email( $_POST['lv_contact_email'] ) : '';
-    $contact_website  = isset( $_POST['lv_contact_website'] ) ? esc_url_raw( $_POST['lv_contact_website'] ) : '';
-    $operating_hours  = isset( $_POST['lv_operating_hours'] ) ? sanitize_textarea_field( $_POST['lv_operating_hours'] ) : '';
-    $listing_categories = isset( $_POST['lv_listing_category'] ) ? (array) $_POST['lv_listing_category'] : array();
-    $listing_categories = array_map( 'intval', $listing_categories );
-    $listing_tags     = isset( $_POST['lv_listing_tag'] ) ? sanitize_text_field( $_POST['lv_listing_tag'] ) : '';
 
+        $title            = sanitize_text_field( $_POST['lv_title'] );
+        $description      = isset( $_POST['lv_description'] ) ? sanitize_textarea_field( $_POST['lv_description'] ) : '';
+        $address_street   = isset( $_POST['lv_address_street'] ) ? sanitize_text_field( $_POST['lv_address_street'] ) : '';
+        $address_city     = isset( $_POST['lv_address_city'] ) ? sanitize_text_field( $_POST['lv_address_city'] ) : '';
+        $address_state    = isset( $_POST['lv_address_state'] ) ? sanitize_text_field( $_POST['lv_address_state'] ) : '';
+        $address_zip      = isset( $_POST['lv_address_zip'] ) ? sanitize_text_field( $_POST['lv_address_zip'] ) : '';
+        $address_country  = isset( $_POST['lv_address_country'] ) ? sanitize_text_field( $_POST['lv_address_country'] ) : '';
+        $contact_phone    = isset( $_POST['lv_contact_phone'] ) ? sanitize_text_field( $_POST['lv_contact_phone'] ) : '';
+        $contact_email    = isset( $_POST['lv_contact_email'] ) ? sanitize_email( $_POST['lv_contact_email'] ) : '';
+        $contact_website  = isset( $_POST['lv_contact_website'] ) ? esc_url_raw( $_POST['lv_contact_website'] ) : '';
+        $operating_hours  = isset( $_POST['lv_operating_hours'] ) ? sanitize_textarea_field( $_POST['lv_operating_hours'] ) : '';
+        $listing_category_id = isset( $_POST['lv_listing_category'] ) ? intval( $_POST['lv_listing_category'] ) : 0;
+        $listing_tags     = isset( $_POST['lv_listing_tag'] ) ? sanitize_text_field( $_POST['lv_listing_tag'] ) : '';
 
-    // --- Get Admin Settings ---
-    $plugin_options = get_option( 'localverse_options' ); // The option_name from LocalVerse_Admin_Settings
-    $default_status = isset( $plugin_options['default_submission_status'] ) ? $plugin_options['default_submission_status'] : 'pending';
-    $redirect_page_id = isset( $plugin_options['submission_redirect_page'] ) ? $plugin_options['submission_redirect_page'] : 0;
+        // --- Get Admin Settings for fallback status ---
+        $plugin_options = get_option( 'localverse_options' );
+        $default_admin_status = isset( $plugin_options['default_submission_status'] ) ? $plugin_options['default_submission_status'] : 'pending';
+        $redirect_page_id = isset( $plugin_options['submission_redirect_page'] ) ? $plugin_options['submission_redirect_page'] : 0;
 
-    // --- Prepare Post Data ---
-    $post_data = array(
-        'post_title'    => $title,
-        'post_content'  => $description,
-        'post_status'   => $default_status, // Use admin setting
-        'post_type'     => 'localverse_listing',
-        'post_author'   => get_current_user_id(),
-    );
+        // --- Determine Post Status ---
+        $new_listing_status = $default_admin_status; // Default to admin setting
 
-    $new_listing_id = wp_insert_post( $post_data );
+        if ( current_user_can( 'publish_localverse_listings' ) ) {
+            $new_listing_status = 'publish';
+        }
+        if ( !in_array($new_listing_status, array('publish', 'pending', 'draft')) ) {
+            $new_listing_status = 'pending';
+        }
 
-    if ( is_wp_error( $new_listing_id ) ) {
+        // --- Prepare Post Data ---
+        $post_data = array(
+            'post_title'    => $title,
+            'post_content'  => $description,
+            'post_status'   => $new_listing_status,
+            'post_type'     => 'localverse_listing',
+            'post_author'   => get_current_user_id(),
+        );
+
+        $new_listing_id = wp_insert_post( $post_data );
+
+        if ( is_wp_error( $new_listing_id ) ) {
+            $form_page_url = get_permalink( get_page_by_path( 'submit-listing' ) );
+            $error_redirect_url = $form_page_url ? add_query_arg( 'submission_status', 'error', $form_page_url ) : home_url();
+            wp_redirect( $error_redirect_url );
+            exit;
+        }
+
+        // Save Custom Fields (Post Meta)
+        update_post_meta( $new_listing_id, '_lv_address_street', $address_street );
+        update_post_meta( $new_listing_id, '_lv_address_city', $address_city );
+        update_post_meta( $new_listing_id, '_lv_address_state', $address_state );
+        update_post_meta( $new_listing_id, '_lv_address_zip', $address_zip );
+        update_post_meta( $new_listing_id, '_lv_address_country', $address_country );
+        update_post_meta( $new_listing_id, '_lv_contact_phone', $contact_phone );
+        update_post_meta( $new_listing_id, '_lv_contact_email', $contact_email );
+        update_post_meta( $new_listing_id, '_lv_contact_website', $contact_website );
+        update_post_meta( $new_listing_id, '_lv_operating_hours', $operating_hours );
+
+        // Assign Taxonomies
+        if ( $listing_category_id > 0 ) {
+            wp_set_object_terms( $new_listing_id, $listing_category_id, 'listing_category', false );
+        }
+        if ( ! empty( $listing_tags ) ) {
+            $tags_array = array_map( 'trim', explode( ',', $listing_tags ) ); // Already sanitized $listing_tags
+            wp_set_object_terms( $new_listing_id, $tags_array, 'listing_tag', false );
+        }
+
+        // Handle Featured Image Upload
+        if ( isset( $_FILES['lv_featured_image'] ) && ! empty( $_FILES['lv_featured_image']['name'] ) ) {
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            $attachment_id = media_handle_upload( 'lv_featured_image', $new_listing_id );
+            if ( !is_wp_error( $attachment_id ) ) {
+                set_post_thumbnail( $new_listing_id, $attachment_id );
+            }
+        }
+
+        // Redirect on Success
         $form_page_url = get_permalink( get_page_by_path( 'submit-listing' ) );
-        $redirect_url = add_query_arg( 'submission_status', 'error', $form_page_url );
-        wp_redirect( $redirect_url );
+        $success_redirect_url = ( $redirect_page_id > 0 && get_permalink( $redirect_page_id ) ) ? get_permalink( $redirect_page_id ) : ($form_page_url ? $form_page_url : home_url());
+        $final_redirect_url = add_query_arg( 'submission_status', 'success', $success_redirect_url );
+
+        wp_redirect( $final_redirect_url );
         exit;
     }
-
-    // --- Save Custom Fields (Post Meta) ---
-    // ... (as before) ...
-    update_post_meta( $new_listing_id, '_lv_address_street', $address_street );
-    update_post_meta( $new_listing_id, '_lv_address_city', $address_city );
-    update_post_meta( $new_listing_id, '_lv_address_state', $address_state );
-    update_post_meta( $new_listing_id, '_lv_address_zip', $address_zip );
-    update_post_meta( $new_listing_id, '_lv_address_country', $address_country );
-    update_post_meta( $new_listing_id, '_lv_contact_phone', $contact_phone );
-    update_post_meta( $new_listing_id, '_lv_contact_email', $contact_email );
-    update_post_meta( $new_listing_id, '_lv_contact_website', $contact_website );
-    update_post_meta( $new_listing_id, '_lv_operating_hours', $operating_hours );
-
-    // --- Assign Taxonomies ---
-    // ... (as before) ...
-    if ( ! empty( $listing_categories ) ) {
-        wp_set_object_terms( $new_listing_id, $listing_categories, 'listing_category', false );
-    }
-    if ( ! empty( $listing_tags ) ) {
-        $tags_array = array_map( 'trim', explode( ',', $listing_tags ) );
-        wp_set_object_terms( $new_listing_id, $tags_array, 'listing_tag', false );
-    }
-
-
-    // --- Handle Featured Image Upload ---
-    // ... (as before) ...
-    if ( isset( $_FILES['lv_featured_image'] ) && ! empty( $_FILES['lv_featured_image']['name'] ) ) {
-        require_once ABSPATH . 'wp-admin/includes/image.php';
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-        require_once ABSPATH . 'wp-admin/includes/media.php';
-        $attachment_id = media_handle_upload( 'lv_featured_image', $new_listing_id );
-        if ( !is_wp_error( $attachment_id ) ) {
-            set_post_thumbnail( $new_listing_id, $attachment_id );
-        }
-    }
-
-    // --- Redirect on Success ---
-    $form_page_url = get_permalink( get_page_by_path( 'submit-listing' ) ); // Fallback
-    $success_redirect_url = $form_page_url; // Default to form page
-
-    if ( $redirect_page_id > 0 && get_permalink( $redirect_page_id ) ) {
-        $success_redirect_url = get_permalink( $redirect_page_id );
-    }
-
-    // Add status to the redirect URL, whether it's the custom page or form page
-    $final_redirect_url = add_query_arg( 'submission_status', 'success', $success_redirect_url );
-
-    // If redirecting to the form page itself, the message is already handled there.
-    // If redirecting to a custom thank you page, that page would need to handle the 'submission_status' query arg.
-    // For simplicity, if it's a different page, we won't add the query arg, assuming the page itself is the success message.
-    // However, to keep the message display consistent (as the form page does), let's add it.
-
-    wp_redirect( $final_redirect_url );
-    exit;
-}
 
     // New method to enqueue public-facing styles and scripts
     public function enqueue_public_styles_scripts() {
@@ -462,6 +478,32 @@ class LocalVerse_Core {
         // Enqueue your plugin's public stylesheet (example)
         // wp_enqueue_style( $this->plugin_name . '-public', LOCALVERSE_PLUGIN_URL . 'assets/css/public-style.css', array(), $this->version, 'all' );
     }
+
+   /**
+    * Includes the owner dashboard template for a page with a specific slug,
+    * only if the current user has the 'business_owner' role.
+    *
+    * @since 0.1.0
+    * @param string $template The path to the template file being included.
+    * @return string The path to the owner dashboard template if conditions are met.
+    */
+   public function include_owner_dashboard_template( $template ) {
+       // The admin should create a page with the slug 'owner-dashboard'
+       if ( is_page( 'owner-dashboard' ) ) {
+           if ( current_user_can( 'business_owner' ) ) {
+               $new_template = LOCALVERSE_PLUGIN_DIR . 'templates/dashboard-owner.php';
+               if ( file_exists( $new_template ) ) {
+                   return $new_template;
+               }
+           } else {
+               // If not a business owner, redirect to home or login page, or show a 'permission denied' message.
+               // For simplicity, redirecting to home.
+               wp_redirect( home_url() );
+               exit;
+           }
+       }
+       return $template;
+   }
 }
 
 /**

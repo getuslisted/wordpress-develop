@@ -22,11 +22,19 @@ if ( ! defined( 'WPINC' ) ) {
  */
 define( 'LOCALVERSE_VERSION', '1.0.0' );
 
+require LOCALVERSE_PLUGIN_DIR . 'includes/user-roles.php';
+
 /**
  * The code that runs during plugin activation.
  */
 function activate_localverse() {
-    // Activation code here.
+    LocalVerse_User_Roles::add_roles_on_activation();
+    // Ensure CPTs are registered before flushing rewrite rules if they aren't already.
+    // For now, assuming CPT registration happens on 'init'.
+    // If CPTs are defined, they should be registered here or ensure 'init' has run.
+    // Then, flush rewrite rules.
+    flush_rewrite_rules();
+    // Other activation code here.
 }
 register_activation_hook( __FILE__, 'activate_localverse' );
 
@@ -34,7 +42,9 @@ register_activation_hook( __FILE__, 'activate_localverse' );
  * The code that runs during plugin deactivation.
  */
 function deactivate_localverse() {
-    // Deactivation code here.
+    LocalVerse_User_Roles::remove_roles_on_deactivation();
+    flush_rewrite_rules();
+    // Other deactivation code here.
 }
 register_deactivation_hook( __FILE__, 'deactivate_localverse' );
 

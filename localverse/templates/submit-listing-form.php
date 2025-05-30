@@ -37,6 +37,8 @@ get_header();
                         echo '<p class="localverse-message error">' . esc_html__( 'There was an error submitting your listing. Please try again.', 'localverse' ) . '</p>';
                     } elseif ( $_GET['submission_status'] === 'nonce_failure' ) {
                         echo '<p class="localverse-message error">' . esc_html__( 'Security check failed. Please try again.', 'localverse' ) . '</p>';
+                    } elseif ( $_GET['submission_status'] === 'login_required' ) { // ADD THIS
+                        echo '<p class="localverse-message error">' . sprintf( __( 'You must be <a href="%s">logged in</a> to submit a listing.', 'localverse' ), esc_url( wp_login_url( get_permalink() ) ) ) . '</p>';
                     }
                 }
                 ?>
@@ -116,11 +118,10 @@ get_header();
                                 'taxonomy'          => 'listing_category',
                                 'hierarchical'      => 1,
                                 'show_option_none'  => __( 'Select a category', 'localverse' ),
-                                'name'              => 'lv_listing_category[]', // Use array for multiple selections if desired (would need select with multiple attribute)
+                                'name'              => 'lv_listing_category', // Changed from lv_listing_category[]
                                 'id'                => 'lv_listing_category',
                                 'selected'          => '', // or some default
                                 'hide_empty'        => 0,
-                                // 'multiple'       => true, // Uncomment for multi-select, then adjust processing
                             ) );
                             ?>
                         </p>

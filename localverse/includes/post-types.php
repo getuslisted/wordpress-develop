@@ -66,7 +66,24 @@ function localverse_register_listing_post_type() {
         'has_archive'           => true,
         'exclude_from_search'   => false,
         'publicly_queryable'    => true,
-        'capability_type'       => 'post', // Consider 'localverse_listing' for custom capabilities later
+            'capability_type'       => 'localverse_listing', // Changed
+            'capabilities'          => array(
+                'edit_post'              => 'edit_localverse_listing',
+                'read_post'              => 'read_localverse_listing',
+                'delete_post'            => 'delete_localverse_listing',
+                'edit_posts'             => 'edit_localverse_listings',
+                'edit_others_posts'      => 'edit_others_localverse_listings',
+                'publish_posts'          => 'publish_localverse_listings',
+                'read_private_posts'     => 'read_private_localverse_listings',
+                'delete_posts'           => 'delete_localverse_listings',
+                'delete_private_posts'   => 'delete_private_localverse_listings',
+                'delete_published_posts' => 'delete_published_localverse_listings',
+                'delete_others_posts'    => 'delete_others_localverse_listings',
+                'edit_private_posts'     => 'edit_private_localverse_listings',
+                'edit_published_posts'   => 'edit_published_localverse_listings',
+                // 'create_posts'           => 'create_localverse_listings', // Usually handled by publish_localverse_listings or edit_localverse_listings
+            ),
+            'map_meta_cap'          => true, // Important for custom capabilities
         'rewrite'               => array( 'slug' => 'listings' ),
         'show_in_rest'          => true, // For Gutenberg and REST API
     );
