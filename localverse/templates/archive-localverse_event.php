@@ -74,6 +74,17 @@ get_header();
                             <?php the_excerpt(); ?>
                         </div><!-- .entry-summary -->
 
+                        <div class="entry-meta">
+                            <?php
+                            // Display Event Categories in loop
+                            $loop_event_categories = get_the_term_list( $event_id, 'event_category', '<p class="event-loop-categories" style="margin-bottom: 10px;"><strong>' . __( 'Categories:', 'localverse' ) . '</strong> ', ', ', '</p>' );
+                            if ( $loop_event_categories && ! is_wp_error( $loop_event_categories ) ) {
+                                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_the_term_list() is safe.
+                                echo $loop_event_categories;
+                            }
+                            ?>
+                        </div>
+
                         <footer class="entry-footer">
                              <a href="<?php the_permalink(); ?>" class="read-more-button"><?php _e('View Event Details', 'localverse'); ?></a>
                         </footer>

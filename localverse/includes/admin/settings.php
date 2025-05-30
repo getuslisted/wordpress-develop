@@ -155,22 +155,20 @@ class LocalVerse_Admin_Settings {
 
     // New Event Settings Section (Placeholder)
     add_settings_section(
-        'localverse_event_settings_section', // ID
-        __( 'Event Settings', 'localverse' ),    // Title
-        array( $this, 'print_event_section_info' ), // Callback for the section description
-        'localverse-settings-admin'          // Page slug where this section will appear
+        'localverse_event_settings_section',
+        __( 'Event Settings', 'localverse' ),
+        array( $this, 'print_event_section_info' ),
+        'localverse-settings-admin'
     );
 
-    // No fields added to this section in this step, but you could add one like this:
-    /*
+    // Add new field for default event submission status
     add_settings_field(
-        'placeholder_event_setting', // ID
-        __( 'Example Event Setting', 'localverse' ), // Title
-        array( $this, 'placeholder_event_setting_callback' ), // Callback for the field
+        'default_event_submission_status', // ID
+        __( 'Default Event Submission Status', 'localverse' ), // Title
+        array( $this, 'default_event_submission_status_callback' ), // Callback
         'localverse-settings-admin', // Page
         'localverse_event_settings_section' // Section ID
     );
-    */
     }
 
     /**
@@ -180,33 +178,31 @@ class LocalVerse_Admin_Settings {
      */
     public function sanitize( $input ) {
         $new_input = array();
-        if ( isset( $input['example_setting_id'] ) ) { // Keep existing or remove
-            $new_input['example_setting_id'] = sanitize_text_field( $input['example_setting_id'] );
+
+        // Sanitize existing options (ensure these are carried over from previous steps)
+        if (isset($input['example_setting_id'])) $new_input['example_setting_id'] = sanitize_text_field($input['example_setting_id']);
+        // Listing Submission Settings
+        if (isset($input['default_submission_status'])) {
+            $allowed_listing_statuses = array('publish', 'pending', 'draft');
+            $new_input['default_submission_status'] = in_array($input['default_submission_status'], $allowed_listing_statuses) ? $input['default_submission_status'] : 'pending';
+        } else { $new_input['default_submission_status'] = 'pending'; }
+        if (isset($input['submission_redirect_page'])) $new_input['submission_redirect_page'] = absint($input['submission_redirect_page']); else { $new_input['submission_redirect_page'] = 0; }
+        // Integrations Settings
+        if (isset($input['google_maps_api_key'])) $new_input['google_maps_api_key'] = sanitize_text_field($input['google_maps_api_key']);
+        $new_input['enable_google_maps'] = isset( $input['enable_google_maps'] ) ? 1 : 0;
+        $new_input['enable_image_gallery'] = isset( $input['enable_image_gallery'] ) ? 1 : 0;
+
+        // Sanitize new default_event_submission_status
+        if ( isset( $input['default_event_submission_status'] ) ) {
+            $allowed_event_statuses = array( 'publish', 'pending', 'draft' ); // Whitelist
+            if ( in_array( $input['default_event_submission_status'], $allowed_event_statuses, true ) ) {
+                $new_input['default_event_submission_status'] = $input['default_event_submission_status'];
+            } else {
+                $new_input['default_event_submission_status'] = 'pending'; // Fallback
+            }
+        } else {
+            $new_input['default_event_submission_status'] = 'pending'; // Default if not set
         }
-
-        // Sanitize default submission status
-        if ( isset( $input['default_submission_status'] ) ) {
-            $allowed_statuses = array( 'publish', 'pending', 'draft' );
-            if ( in_array( $input['default_submission_status'], $allowed_statuses, true ) ) {
-                $new_input['default_submission_status'] = $input['default_submission_status'];
-            } else { $new_input['default_submission_status'] = 'pending'; }
-        } else { $new_input['default_submission_status'] = 'pending';}
-
-        if ( isset( $input['submission_redirect_page'] ) ) {
-            $new_input['submission_redirect_page'] = absint( $input['submission_redirect_page'] );
-        } else { $new_input['submission_redirect_page'] = 0; }
-
-
-        // Sanitize Google Maps API Key
-        if ( isset( $input['google_maps_api_key'] ) ) {
-            $new_input['google_maps_api_key'] = sanitize_text_field( $input['google_maps_api_key'] );
-        }
-
-        // Sanitize enable_google_maps (from plan step 4)
-        $new_input['enable_google_maps'] = isset($input['enable_google_maps']) ? 1 : 0;
-
-    // Sanitize enable_image_gallery
-    $new_input['enable_image_gallery'] = isset( $input['enable_image_gallery'] ) ? 1 : 0;
 
         return $new_input;
     }
@@ -305,20 +301,32 @@ class LocalVerse_Admin_Settings {
         echo '<label for="enable_image_gallery"> ' . __( 'Enable image gallery feature on listing pages.', 'localverse' ) . '</label>';
     }
 
-    // New callback function for the Event Settings section description:
+    // Callback for the Event Settings section description (should exist from Event Part 1)
     public function print_event_section_info() {
         echo '<p>' . esc_html__( 'Configure settings related to the Event Listings module. More options will be available here in future updates.', 'localverse' ) . '</p>';
     }
 
-    // Example callback for a placeholder field (if you were to add one):
-    /*
-    public function placeholder_event_setting_callback() {
-        // $options = get_option( $this->option_name );
-        // $value = isset( $options['placeholder_event_setting'] ) ? $options['placeholder_event_setting'] : '';
-        // echo '<input type="text" id="placeholder_event_setting" name="' . esc_attr( $this->option_name ) . '[placeholder_event_setting]" value="' . esc_attr( $value ) . '" class="regular-text" />';
-        echo '<p class="description">' . esc_html__( 'This is a placeholder for a future event setting.', 'localverse' ) . '</p>';
+    // New callback function for the default event submission status dropdown:
+    public function default_event_submission_status_callback() {
+        $options = get_option( $this->option_name );
+        $current_status = isset( $options['default_event_submission_status'] ) ? $options['default_event_submission_status'] : 'pending';
+
+        $statuses = array(
+            'pending' => __( 'Pending Review', 'localverse' ),
+            'publish' => __( 'Published', 'localverse' ),
+            'draft'   => __( 'Draft', 'localverse' ),
+        );
+        ?>
+        <select id="default_event_submission_status" name="<?php echo esc_attr( $this->option_name ); ?>[default_event_submission_status]">
+            <?php foreach ( $statuses as $status_val => $status_label ) : ?>
+                <option value="<?php echo esc_attr( $status_val ); ?>" <?php selected( $current_status, $status_val ); ?>>
+                    <?php echo esc_html( $status_label ); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php _e( 'Select the default status for events submitted via the front-end form. (Note: Currently, submissions default to "Pending Review" in the handler; this setting will be integrated later.)', 'localverse' ); ?></p>
+        <?php
     }
-    */
 }
 
 // The instantiation and hook registration will be managed by a dedicated admin class or the core loader.

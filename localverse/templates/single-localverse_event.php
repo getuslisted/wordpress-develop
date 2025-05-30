@@ -95,6 +95,15 @@ if ( $end_datetime_str ) {
 
                 <hr style="margin: 20px 0;">
 
+                <?php
+                // Display Event Categories
+                $event_categories = get_the_term_list( $event_id, 'event_category', '<p class="event-categories"><strong>' . __( 'Categories:', 'localverse' ) . '</strong> ', ', ', '</p>' );
+                if ( $event_categories && ! is_wp_error( $event_categories ) ) {
+                    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_the_term_list() is safe.
+                    echo $event_categories;
+                }
+                ?>
+
                 <?php the_content(); // Main event description ?>
 
             </div><!-- .entry-content -->

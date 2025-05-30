@@ -69,8 +69,9 @@ class LocalVerse_Core {
 
     add_action( 'init', array( $this, 'handle_listing_submission' ) );
     add_action( 'init', array( $this, 'handle_review_submission' ) );
+    add_action( 'init', array( $this, 'handle_event_submission' ) ); // Add this line for event handling
 
-    add_filter( 'query_vars', array( $this, 'add_custom_query_vars' ) ); // ADD THIS LINE
+    add_filter( 'query_vars', array( $this, 'add_custom_query_vars' ) );
     }
 
     /**
@@ -166,8 +167,9 @@ class LocalVerse_Core {
         add_filter( 'template_include', array( $this, 'include_submit_listing_template' ) );
         add_filter( 'template_include', array( $this, 'include_owner_dashboard_template' ) );
         add_filter( 'single_template', array( $this, 'override_single_event_template' ) );
+        add_filter( 'archive_template', array( $this, 'override_archive_event_template' ) );
 
-        add_filter( 'archive_template', array( $this, 'override_archive_event_template' ) ); // ADD THIS LINE
+        add_filter( 'template_include', array( $this, 'include_submit_event_template' ) ); // ADD THIS LINE
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_public_styles_scripts' ) );
     }
 
@@ -684,6 +686,161 @@ class LocalVerse_Core {
             }
         }
         return $template;
+    }
+
+    /**
+     * Includes the submit event form template for a page with a specific slug,
+     * for logged-in users with the 'submit_localverse_event' capability.
+     *
+     * @since 0.1.0
+     * @param string $template The path to the template file being included.
+     * @return string The path to the submit event form template if conditions are met.
+     */
+    public function include_submit_event_template( $template ) {
+        // Admin should create a page with slug 'submit-event'
+        if ( is_page( 'submit-event' ) ) {
+            $listing_id_for_cap_check = 0; // Not strictly needed for a general submission cap, but good practice if context was relevant
+                                           // For event submission, context is usually not a specific post ID yet.
+
+            if ( ! is_user_logged_in() ) {
+                wp_redirect( wp_login_url( get_permalink() ) ); // Redirect to login, then back to form
+                exit;
+            } elseif ( ! current_user_can( 'submit_localverse_event' /*, $listing_id_for_cap_check */ ) ) {
+                // User is logged in but lacks capability. Redirect or show error.
+                // Redirecting to home page for now. A dedicated 'access denied' page might be better.
+                // Or, redirect back to the form page with a status message.
+                wp_redirect( add_query_arg( 'event_submission_status', 'cap_failure', get_permalink() ) );
+                exit;
+            }
+
+            $new_template = LOCALVERSE_PLUGIN_DIR . 'templates/submit-event-form.php';
+            if ( file_exists( $new_template ) ) {
+                return $new_template;
+            }
+        }
+        return $template;
+    }
+
+    /**
+     * Handles the front-end event submission.
+     * Hooked to 'init'.
+     *
+     * @since 0.1.0
+     */
+    public function handle_event_submission() {
+        // Check if our form has been submitted and it's our action
+        if ( $_SERVER['REQUEST_METHOD'] !== 'POST' || ! isset( $_POST['localverse_action'] ) || $_POST['localverse_action'] !== 'submit_event' ) {
+            return;
+        }
+
+        // Determine redirect URL (submit event page)
+        $submit_event_page = get_page_by_path( 'submit-event' );
+        $redirect_base_url = $submit_event_page ? get_permalink( $submit_event_page->ID ) : home_url('/'); // Fallback to home
+
+        // Ensure user is logged in
+        if ( ! is_user_logged_in() ) {
+            wp_redirect( add_query_arg( 'event_submission_status', 'login_required', $redirect_base_url ) );
+            exit;
+        }
+
+        // Verify nonce
+        if ( ! isset( $_POST['localverse_submit_event_nonce'] ) || ! wp_verify_nonce( $_POST['localverse_submit_event_nonce'], 'localverse_submit_event_action' ) ) {
+            wp_redirect( add_query_arg( 'event_submission_status', 'nonce_failure', $redirect_base_url ) );
+            exit;
+        }
+
+        // Honeypot field check
+        if ( ! empty( $_POST['lv_event_contact_me_by_fax_only'] ) ) {
+            wp_redirect( add_query_arg( 'event_submission_status', 'error', $redirect_base_url ) ); // Generic error for spam
+            exit;
+        }
+
+        // Capability check
+        if ( ! current_user_can( 'submit_localverse_event' ) ) {
+            wp_redirect( add_query_arg( 'event_submission_status', 'cap_failure', $redirect_base_url ) );
+            exit;
+        }
+
+        // --- Validation & Sanitization ---
+        $errors = array();
+
+        $event_title = isset( $_POST['lv_event_title'] ) ? sanitize_text_field( stripslashes( $_POST['lv_event_title'] ) ) : '';
+        $event_description = isset( $_POST['lv_event_description'] ) ? sanitize_textarea_field( stripslashes( $_POST['lv_event_description'] ) ) : '';
+        $event_category_id = isset( $_POST['lv_event_category'] ) ? intval( $_POST['lv_event_category'] ) : 0;
+
+        $start_datetime_str = isset( $_POST['lv_event_start_datetime'] ) ? sanitize_text_field( $_POST['lv_event_start_datetime'] ) : '';
+        $end_datetime_str   = isset( $_POST['lv_event_end_datetime'] ) ? sanitize_text_field( $_POST['lv_event_end_datetime'] ) : '';
+        $location_name      = isset( $_POST['lv_event_location_name'] ) ? sanitize_text_field( stripslashes( $_POST['lv_event_location_name'] ) ) : '';
+        $location_address   = isset( $_POST['lv_event_location_address'] ) ? sanitize_textarea_field( stripslashes( $_POST['lv_event_location_address'] ) ) : '';
+        $event_type         = isset( $_POST['lv_event_type'] ) ? sanitize_text_field( stripslashes( $_POST['lv_event_type'] ) ) : '';
+
+        if ( empty( $event_title ) ) { $errors[] = __( 'Event Title is required.', 'localverse' ); }
+        if ( empty( $event_description ) ) { $errors[] = __( 'Event Description is required.', 'localverse' ); }
+        if ( empty( $event_category_id ) ) { $errors[] = __( 'Event Category is required.', 'localverse' ); }
+        if ( empty( $start_datetime_str ) ) { $errors[] = __( 'Start Date & Time is required.', 'localverse' ); }
+        // Basic date format validation (YYYY-MM-DD HH:MM) - can be more robust
+        if ( !empty($start_datetime_str) && !preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $start_datetime_str) ) { $errors[] = __('Invalid Start Date & Time format. Use YYYY-MM-DD HH:MM.', 'localverse'); }
+        if ( !empty($end_datetime_str) && !preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $end_datetime_str) ) { $errors[] = __('Invalid End Date & Time format. Use YYYY-MM-DD HH:MM.', 'localverse'); }
+        if ( empty( $location_name ) ) { $errors[] = __( 'Location Name is required.', 'localverse' ); }
+
+
+        if ( ! empty( $errors ) ) {
+            // For simplicity, just sending a generic validation error status.
+            // In a real plugin, you might pass $errors back to the form to display specific messages.
+            wp_redirect( add_query_arg( 'event_submission_status', 'validation_error', $redirect_base_url ) );
+            exit;
+        }
+
+        // --- Prepare Post Data for Event CPT ---
+        $current_user = wp_get_current_user();
+        $event_post_data = array(
+            'post_title'    => $event_title,
+            'post_content'  => $event_description,
+            'post_status'   => 'pending', // Default to 'pending' for now. Admin setting later.
+            'post_type'     => 'localverse_event',
+            'post_author'   => $current_user->ID,
+        );
+
+        $new_event_id = wp_insert_post( $event_post_data, true ); // true for WP_Error on failure
+
+        if ( is_wp_error( $new_event_id ) ) {
+            // error_log("Event submission failed (wp_insert_post): " . $new_event_id->get_error_message());
+            wp_redirect( add_query_arg( 'event_submission_status', 'error', $redirect_base_url ) );
+            exit;
+        }
+
+        // --- Save Custom Fields (Post Meta) ---
+        update_post_meta( $new_event_id, '_lv_event_start_datetime', $start_datetime_str );
+        if ( !empty($end_datetime_str) ) { update_post_meta( $new_event_id, '_lv_event_end_datetime', $end_datetime_str ); } else { delete_post_meta( $new_event_id, '_lv_event_end_datetime');}
+        update_post_meta( $new_event_id, '_lv_event_location_name', $location_name );
+        if ( !empty($location_address) ) { update_post_meta( $new_event_id, '_lv_event_location_address', $location_address ); } else { delete_post_meta( $new_event_id, '_lv_event_location_address');}
+        if ( !empty($event_type) ) { update_post_meta( $new_event_id, '_lv_event_type', $event_type ); } else { delete_post_meta( $new_event_id, '_lv_event_type');}
+
+        // --- Assign Taxonomy ---
+        if ( $event_category_id > 0 ) {
+            wp_set_object_terms( $new_event_id, $event_category_id, 'event_category' );
+        }
+
+        // --- Handle Featured Image Upload ---
+        if ( isset( $_FILES['lv_event_featured_image'] ) && !empty($_FILES['lv_event_featured_image']['name']) && $_FILES['lv_event_featured_image']['error'] == 0 ) {
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+
+            // media_handle_upload is preferred for adding to media library and attaching
+            $attachment_id = media_handle_upload( 'lv_event_featured_image', $new_event_id );
+
+            if ( ! is_wp_error( $attachment_id ) ) {
+                set_post_thumbnail( $new_event_id, $attachment_id );
+            } else {
+                // Optional: Log image upload error
+                // error_log("Event image upload failed: " . $attachment_id->get_error_message());
+            }
+        }
+
+        // --- Redirect on Success ---
+        wp_redirect( add_query_arg( 'event_submission_status', 'success', $redirect_base_url . '#localverse-frontend-event-submission-form' ) );
+        exit;
     }
 
    /**
