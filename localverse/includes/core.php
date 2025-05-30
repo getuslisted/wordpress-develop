@@ -123,7 +123,8 @@ class LocalVerse_Core {
      */
     private function define_admin_hooks() {
         require_once LOCALVERSE_PLUGIN_DIR . 'includes/admin/settings.php';
-        require_once LOCALVERSE_PLUGIN_DIR . 'includes/admin/class-localverse-admin-listing-metaboxes.php'; // Add this line
+        require_once LOCALVERSE_PLUGIN_DIR . 'includes/admin/class-localverse-admin-listing-metaboxes.php';
+        require_once LOCALVERSE_PLUGIN_DIR . 'includes/admin/class-localverse-admin-event-metaboxes.php'; // ADD THIS LINE
 
         if ( is_admin() ) { // Make sure we are in the admin area
             $plugin_admin_settings = new LocalVerse_Admin_Settings();
@@ -132,8 +133,14 @@ class LocalVerse_Core {
 
             // Listing Metaboxes
             $listing_metaboxes = new LocalVerse_Admin_Listing_Metaboxes( $this->get_plugin_name(), $this->get_version() );
-            add_action( 'add_meta_boxes_localverse_listing', array( $listing_metaboxes, 'add_meta_boxes' ) ); // Specific to post type
-            add_action( 'save_post_localverse_listing', array( $listing_metaboxes, 'save_listing_details' ) ); // Specific to post type
+            add_action( 'add_meta_boxes_localverse_listing', array( $listing_metaboxes, 'add_meta_boxes' ) );
+            add_action( 'save_post_localverse_listing', array( $listing_metaboxes, 'save_listing_details' ) );
+
+            // Event Metaboxes (NEW)
+            $event_metaboxes = new LocalVerse_Admin_Event_Metaboxes( $this->get_plugin_name(), $this->get_version() );
+            add_action( 'add_meta_boxes_localverse_event', array( $event_metaboxes, 'add_meta_boxes' ) );
+            add_action( 'save_post_localverse_event', array( $event_metaboxes, 'save_event_details' ) );
+            // Note: save_post_{post_type} is used for specificity.
 
             // Example of enqueueing admin scripts (will be needed later)
             // add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_styles' ) );
@@ -157,8 +164,10 @@ class LocalVerse_Core {
         add_filter( 'single_template', array( $this, 'override_single_listing_template' ) );
         add_filter( 'archive_template', array( $this, 'override_archive_listing_template' ) );
         add_filter( 'template_include', array( $this, 'include_submit_listing_template' ) );
-        add_filter( 'template_include', array( $this, 'include_owner_dashboard_template' ) ); // ADD THIS LINE
+        add_filter( 'template_include', array( $this, 'include_owner_dashboard_template' ) );
+        add_filter( 'single_template', array( $this, 'override_single_event_template' ) );
 
+        add_filter( 'archive_template', array( $this, 'override_archive_event_template' ) ); // ADD THIS LINE
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_public_styles_scripts' ) );
     }
 
@@ -638,6 +647,43 @@ class LocalVerse_Core {
     public function add_custom_query_vars( $vars ) {
         $vars[] = 'paged_reviews'; // For review pagination
         return $vars;
+    }
+
+    /**
+     * Overrides the default single post template for 'localverse_event' CPT.
+     *
+     * @since 0.1.0
+     * @param string $template The path to the template file.
+     * @return string The path to the event single template file.
+     */
+    public function override_single_event_template( $template ) {
+        if ( is_singular( 'localverse_event' ) ) {
+            $new_template = LOCALVERSE_PLUGIN_DIR . 'templates/single-localverse_event.php';
+            if ( file_exists( $new_template ) ) {
+                // Optional: Create and pass a LocalVerse_Event object to the template here
+                // global $post;
+                // $GLOBALS['localverse_event_object'] = new LocalVerse_Event($post->ID); // If model exists
+                return $new_template;
+            }
+        }
+        return $template;
+    }
+
+    /**
+     * Overrides the default archive template for 'localverse_event' CPT.
+     *
+     * @since 0.1.0
+     * @param string $template The path to the template file.
+     * @return string The path to the event archive template file.
+     */
+    public function override_archive_event_template( $template ) {
+        if ( is_post_type_archive( 'localverse_event' ) ) {
+            $new_template = LOCALVERSE_PLUGIN_DIR . 'templates/archive-localverse_event.php';
+            if ( file_exists( $new_template ) ) {
+                return $new_template;
+            }
+        }
+        return $template;
     }
 
    /**

@@ -152,6 +152,25 @@ class LocalVerse_Admin_Settings {
         'localverse-settings-admin', // Page
         'localverse_integrations_settings_section' // Section
     );
+
+    // New Event Settings Section (Placeholder)
+    add_settings_section(
+        'localverse_event_settings_section', // ID
+        __( 'Event Settings', 'localverse' ),    // Title
+        array( $this, 'print_event_section_info' ), // Callback for the section description
+        'localverse-settings-admin'          // Page slug where this section will appear
+    );
+
+    // No fields added to this section in this step, but you could add one like this:
+    /*
+    add_settings_field(
+        'placeholder_event_setting', // ID
+        __( 'Example Event Setting', 'localverse' ), // Title
+        array( $this, 'placeholder_event_setting_callback' ), // Callback for the field
+        'localverse-settings-admin', // Page
+        'localverse_event_settings_section' // Section ID
+    );
+    */
     }
 
     /**
@@ -285,6 +304,21 @@ class LocalVerse_Admin_Settings {
         echo '<input type="checkbox" id="enable_image_gallery" name="' . esc_attr( $this->option_name ) . '[enable_image_gallery]" value="1" ' . checked( 1, $checked, false ) . ' />';
         echo '<label for="enable_image_gallery"> ' . __( 'Enable image gallery feature on listing pages.', 'localverse' ) . '</label>';
     }
+
+    // New callback function for the Event Settings section description:
+    public function print_event_section_info() {
+        echo '<p>' . esc_html__( 'Configure settings related to the Event Listings module. More options will be available here in future updates.', 'localverse' ) . '</p>';
+    }
+
+    // Example callback for a placeholder field (if you were to add one):
+    /*
+    public function placeholder_event_setting_callback() {
+        // $options = get_option( $this->option_name );
+        // $value = isset( $options['placeholder_event_setting'] ) ? $options['placeholder_event_setting'] : '';
+        // echo '<input type="text" id="placeholder_event_setting" name="' . esc_attr( $this->option_name ) . '[placeholder_event_setting]" value="' . esc_attr( $value ) . '" class="regular-text" />';
+        echo '<p class="description">' . esc_html__( 'This is a placeholder for a future event setting.', 'localverse' ) . '</p>';
+    }
+    */
 }
 
 // The instantiation and hook registration will be managed by a dedicated admin class or the core loader.

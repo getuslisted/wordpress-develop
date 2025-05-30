@@ -190,4 +190,88 @@ add_action( 'init', 'localverse_register_all_post_types', 0 );
 */
 // For this subtask, just adding the new hook is fine. If localverse_register_listing_post_type
 // is already hooked, this will just add another function to the 'init' action queue.
+
+
+/**
+ * Register Event Custom Post Type.
+ *
+ * @since 0.1.0
+ */
+function localverse_register_event_post_type() {
+    $labels = array(
+        'name'                  => _x( 'Events', 'Post Type General Name', 'localverse' ),
+        'singular_name'         => _x( 'Event', 'Post Type Singular Name', 'localverse' ),
+        'menu_name'             => __( 'Events', 'localverse' ),
+        'name_admin_bar'        => __( 'Event', 'localverse' ),
+        'archives'              => __( 'Event Archives', 'localverse' ),
+        'attributes'            => __( 'Event Attributes', 'localverse' ),
+        'parent_item_colon'     => __( 'Parent Event:', 'localverse' ),
+        'all_items'             => __( 'All Events', 'localverse' ),
+        'add_new_item'          => __( 'Add New Event', 'localverse' ),
+        'add_new'               => __( 'Add New', 'localverse' ),
+        'new_item'              => __( 'New Event', 'localverse' ),
+        'edit_item'             => __( 'Edit Event', 'localverse' ),
+        'update_item'           => __( 'Update Event', 'localverse' ),
+        'view_item'             => __( 'View Event', 'localverse' ),
+        'view_items'            => __( 'View Events', 'localverse' ),
+        'search_items'          => __( 'Search Event', 'localverse' ),
+        'not_found'             => __( 'No events found', 'localverse' ),
+        'not_found_in_trash'    => __( 'No events found in Trash', 'localverse' ),
+        'featured_image'        => __( 'Event Image', 'localverse' ),
+        'set_featured_image'    => __( 'Set event image', 'localverse' ),
+        'remove_featured_image' => __( 'Remove event image', 'localverse' ),
+        'use_featured_image'    => __( 'Use as event image', 'localverse' ),
+        'insert_into_item'      => __( 'Insert into event', 'localverse' ),
+        'uploaded_to_this_item' => __( 'Uploaded to this event', 'localverse' ),
+        'items_list'            => __( 'Events list', 'localverse' ),
+        'items_list_navigation' => __( 'Events list navigation', 'localverse' ),
+        'filter_items_list'     => __( 'Filter events list', 'localverse' ),
+    );
+    $args = array(
+        'label'                 => __( 'Event', 'localverse' ),
+        'description'           => __( 'Community events listings.', 'localverse' ),
+        'labels'                => $labels,
+        'supports'              => array( 'title', 'editor', 'author', 'thumbnail', 'excerpt', 'custom-fields', 'comments' ),
+        'hierarchical'          => false,
+        'public'                => true,
+        'show_ui'               => true,
+        'show_in_menu'          => true,
+        'menu_position'         => 27, // Example: After Listings (5) and Reviews (26)
+        'menu_icon'             => 'dashicons-calendar-alt',
+        'show_in_admin_bar'     => true,
+        'show_in_nav_menus'     => true,
+        'can_export'            => true,
+        'has_archive'           => true, // Enables an archive page at /events/ (or custom slug)
+        'exclude_from_search'   => false, // Events should typically be searchable
+        'publicly_queryable'    => true,
+
+        'capability_type'       => 'localverse_event', // Singular name for capability type
+        'capabilities'          => array(
+            'edit_post'           => 'edit_localverse_event',
+            'read_post'           => 'read_localverse_event',
+            'delete_post'         => 'delete_localverse_event',
+            'edit_posts'          => 'edit_localverse_events',
+            'edit_others_posts'   => 'edit_others_localverse_events',
+            'publish_posts'       => 'publish_localverse_events',
+            'read_private_posts'  => 'read_private_localverse_events',
+            'delete_posts'        => 'delete_localverse_events',
+            'delete_private_posts' => 'delete_private_localverse_events',
+            'delete_published_posts' => 'delete_published_localverse_events',
+            'delete_others_posts' => 'delete_others_localverse_events',
+            'edit_private_posts'  => 'edit_private_localverse_events',
+            'edit_published_posts' => 'edit_published_localverse_events',
+        ),
+        'map_meta_cap'          => true,
+
+        'rewrite'               => array( 'slug' => 'events' ), // URL slug for the event archive and single events
+        'show_in_rest'          => true,  // Allow access via REST API
+    );
+    register_post_type( 'localverse_event', $args );
+}
+add_action( 'init', 'localverse_register_event_post_type', 0 );
+
+// If you have a central function like localverse_register_all_post_types(),
+// ensure localverse_register_event_post_type() is called within it,
+// and that central function is hooked to 'init'.
+// Otherwise, hooking it directly as above is fine.
 ?>

@@ -28,30 +28,40 @@ class LocalVerse_User_Roles {
             'delete_localverse_listings', 'delete_private_localverse_listings',
             'delete_published_localverse_listings', 'delete_others_localverse_listings',
             'edit_private_localverse_listings', 'edit_published_localverse_listings',
-            // These are meta caps, usually not directly assigned to roles unless specific needs.
-            // They are derived from primitive caps like edit_posts, edit_others_posts etc.
-            // 'edit_localverse_listing', 'read_localverse_listing', 'delete_localverse_listing',
+            // Primitive caps for CPT, mapped in CPT registration from edit_post etc.
+            'edit_localverse_listing', 'read_localverse_listing', 'delete_localverse_listing',
         );
 
-        // --- Review Capabilities (New) ---
+        // --- Review Capabilities (existing) ---
         $review_caps_list = array(
-            'edit_localverse_review',    // Corresponds to edit_post for a single review
-            'read_localverse_review',    // Corresponds to read_post for a single review
-            'delete_localverse_review',  // Corresponds to delete_post for a single review
-            'edit_localverse_reviews',   // Corresponds to edit_posts (plural, for managing all reviews of this type)
-            'edit_others_localverse_reviews',
-            'publish_localverse_reviews',
-            'read_private_localverse_reviews',
-            'delete_localverse_reviews', // Primitive cap for deleting reviews (plural)
-            'delete_private_localverse_reviews',
-            'delete_published_localverse_reviews',
-            'delete_others_localverse_reviews',
-            'edit_private_localverse_reviews',
-            'edit_published_localverse_reviews',
-            'submit_localverse_review', // Custom capability to control who can submit a review
+            'edit_localverse_review', 'read_localverse_review', 'delete_localverse_review',
+            'edit_localverse_reviews', 'edit_others_localverse_reviews',
+            'publish_localverse_reviews', 'read_private_localverse_reviews',
+            'delete_localverse_reviews', 'delete_private_localverse_reviews',
+            'delete_published_localverse_reviews', 'delete_others_localverse_reviews',
+            'edit_private_localverse_reviews', 'edit_published_localverse_reviews',
+            'submit_localverse_review',
         );
 
-        // Business Owner Role (Add submit_localverse_review)
+        // --- Event Capabilities (New) ---
+        $event_caps_list = array(
+            'edit_localverse_event',    // Corresponds to edit_post for a single event
+            'read_localverse_event',    // Corresponds to read_post for a single event
+            'delete_localverse_event',  // Corresponds to delete_post for a single event
+            'edit_localverse_events',   // Corresponds to edit_posts (plural)
+            'edit_others_localverse_events',
+            'publish_localverse_events',
+            'read_private_localverse_events',
+            'delete_localverse_events', // Primitive cap for deleting events (plural)
+            'delete_private_localverse_events',
+            'delete_published_localverse_events',
+            'delete_others_localverse_events',
+            'edit_private_localverse_events',
+            'edit_published_localverse_events',
+            'submit_localverse_event', // Custom capability to control who can submit an event
+        );
+
+        // Business Owner Role (Add submit_localverse_event)
         $business_owner_caps = array(
             'read'                               => true,
             'publish_localverse_listings'        => true,
@@ -61,7 +71,8 @@ class LocalVerse_User_Roles {
             'read_private_localverse_listings'   => true,
             'edit_published_localverse_listings' => true,
             'delete_published_localverse_listings' => true,
-            'submit_localverse_review'           => true, // Can submit reviews
+            'submit_localverse_review'           => true,
+            'submit_localverse_event'            => true, // ADDED
         );
         $business_owner_role = get_role('business_owner');
         if (!$business_owner_role) {
@@ -72,10 +83,11 @@ class LocalVerse_User_Roles {
             }
         }
 
-        // Local User Role (Add submit_localverse_review)
+        // Local User Role (Add submit_localverse_event)
         $local_user_caps = array(
             'read' => true,
-            'submit_localverse_review' => true, // Can submit reviews
+            'submit_localverse_review' => true,
+            'submit_localverse_event'  => true, // ADDED
         );
         $local_user_role = get_role('local_user');
         if (!$local_user_role) {
@@ -86,21 +98,22 @@ class LocalVerse_User_Roles {
             }
         }
 
-        // Add all listing AND review capabilities to Administrator
+        // Add all listing, review, AND event capabilities to Administrator
         $admin_role = get_role( 'administrator' );
         if ( $admin_role ) {
-            // Add caps that might be part of CPT registration's 'capabilities' array (singular forms)
-            // if not covered by map_meta_cap handling for 'edit_posts' etc.
-            $admin_role->add_cap( 'edit_localverse_listing' ); // For CPT 'edit_post'
-            $admin_role->add_cap( 'delete_localverse_listing' ); // For CPT 'delete_post'
-            $admin_role->add_cap( 'read_localverse_listing' );   // For CPT 'read_post' (usually covered by read)
+            // Add primitive caps for CPTs that are mapped from 'edit_post', 'read_post', 'delete_post'
+            // These are good to add explicitly for completeness, though map_meta_cap handles many scenarios.
+            $admin_role->add_cap( 'edit_localverse_listing' );
+            $admin_role->add_cap( 'read_localverse_listing' );
+            $admin_role->add_cap( 'delete_localverse_listing' );
+            $admin_role->add_cap( 'edit_localverse_review' );
+            $admin_role->add_cap( 'read_localverse_review' );
+            $admin_role->add_cap( 'delete_localverse_review' );
+            // Event primitive caps will be in $event_caps_list
 
-            foreach ( $listing_caps_list as $cap ) {
-                $admin_role->add_cap( $cap );
-            }
-            foreach ( $review_caps_list as $cap ) {
-                $admin_role->add_cap( $cap );
-            }
+            foreach ( $listing_caps_list as $cap ) { $admin_role->add_cap( $cap ); }
+            foreach ( $review_caps_list as $cap ) { $admin_role->add_cap( $cap ); }
+            foreach ( $event_caps_list as $cap ) { $admin_role->add_cap( $cap ); } // ADDED
         }
     }
 
@@ -110,13 +123,11 @@ class LocalVerse_User_Roles {
      * @since 0.1.0
      */
     public static function remove_roles_on_deactivation() {
-        // Business Owner and Local User roles and their specific caps are removed by remove_role()
         remove_role( 'business_owner' );
         remove_role( 'local_user' );
 
         $admin_role = get_role( 'administrator' );
         if ( $admin_role ) {
-            // Define lists again or make them class properties if preferred
             $listing_caps_list = array(
                 'edit_localverse_listings', 'edit_others_localverse_listings',
                 'publish_localverse_listings', 'read_private_localverse_listings',
@@ -134,13 +145,19 @@ class LocalVerse_User_Roles {
                 'edit_private_localverse_reviews', 'edit_published_localverse_reviews',
                 'submit_localverse_review',
             );
+            $event_caps_list = array(
+                'edit_localverse_event', 'read_localverse_event', 'delete_localverse_event',
+                'edit_localverse_events', 'edit_others_localverse_events',
+                'publish_localverse_events', 'read_private_localverse_events',
+                'delete_localverse_events', 'delete_private_localverse_events',
+                'delete_published_localverse_events', 'delete_others_localverse_events',
+                'edit_private_localverse_events', 'edit_published_localverse_events',
+                'submit_localverse_event',
+            );
 
-            foreach ( $listing_caps_list as $cap ) {
-                $admin_role->remove_cap( $cap );
-            }
-            foreach ( $review_caps_list as $cap ) {
-                $admin_role->remove_cap( $cap );
-            }
+            foreach ( $listing_caps_list as $cap ) { $admin_role->remove_cap( $cap ); }
+            foreach ( $review_caps_list as $cap ) { $admin_role->remove_cap( $cap ); }
+            foreach ( $event_caps_list as $cap ) { $admin_role->remove_cap( $cap ); } // ADDED
         }
     }
 }
