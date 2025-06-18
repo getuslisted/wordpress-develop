@@ -1,0 +1,30 @@
+<!-- phpunit.xml.dist -->
+<phpunit
+    bootstrap="tests/bootstrap.php"
+    backupGlobals="false"
+    colors="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    stopOnFailure="false"
+    cacheResult="false"
+    >
+    <testsuites>
+        <testsuite name="Google Sheet CSV Updater Test Suite">
+            <directory suffix=".php">./tests/</directory>
+        </testsuite>
+    </testsuites>
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">./</directory>
+        </include>
+        <exclude>
+            <directory>./tests/</directory>
+            <directory>./vendor/</directory>
+        </exclude>
+    </coverage>
+    <php>
+        <env name="WP_ENVIRONMENT_TYPE" value="test" />
+        <env name="WP_TESTS_DIR" value="/tmp/wordpress-tests-lib" />
+        <!-- Adjust WP_TESTS_DIR if your environment installs it elsewhere -->
+    </php>
+</phpunit>

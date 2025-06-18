@@ -1,0 +1,49 @@
+/* assets/css/gscu-styles.css */
+.gscu-table { /* Basic class for all tables, can be empty or have minimal defaults */
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em; /* Add some space below the table */
+}
+.gscu-table th, .gscu-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd; /* Basic bottom border for rows */
+}
+.gscu-table th {
+    background-color: #f2f2f2; /* Basic header background */
+    font-weight: bold;
+}
+
+/* Minimalist Striped Style */
+.gscu-table-striped tbody tr:nth-of-type(odd) {
+    background-color: #f9f9f9;
+}
+
+/* Bordered Style */
+.gscu-table-bordered th,
+.gscu-table-bordered td {
+    border: 1px solid #ddd;
+}
+.gscu-table-bordered thead th { /* Keep header distinct */
+    border-bottom-width: 2px;
+}
+
+/* Pagination styling (basic) */
+.gscu-pagination {
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+.gscu-pagination .page-numbers {
+    display: inline-block;
+    padding: 5px 10px;
+    margin: 0 2px;
+    border: 1px solid #ccc;
+    text-decoration: none;
+}
+.gscu-pagination .page-numbers.current {
+    background-color: #f0f0f0;
+    font-weight: bold;
+}
+.gscu-pagination .page-numbers:hover:not(.current) {
+    background-color: #e9e9e9;
+}
