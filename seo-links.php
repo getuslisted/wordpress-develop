@@ -186,41 +186,43 @@ function gulkl_display_post_type_table( $post_type ) {
                     }
                     $keyword_density = gulkl_calculate_keyword_density( $post->post_content, $keyword );
                     ?>
-                    <tr class="gulkl-main-row">
-                        <td>
-                            <a href="#" class="gulkl-toggle-opportunities"><span class="dashicons dashicons-plus"></span></a>
-                            <?php echo esc_html( $post->post_title ); ?>
-                            <div class="row-actions">
-                                <a href="<?php echo get_edit_post_link( $post->ID ); ?>">Edit</a> |
-                                <a href="<?php echo get_permalink( $post->ID ); ?>">View</a>
-                            </div>
-                        </td>
-                        <td><?php echo esc_html( $keyword ); ?></td>
-                        <td>
-                            <?php echo esc_html( $keyword_density ); ?>%
-                            <span class="dashicons dashicons-editor-help" title="Keyword density is the percentage of times a keyword or phrase appears on a web page compared to the total number of words on the page."></span>
-                        </td>
-                        <td><?php echo esc_html( $backlinks ); ?></td>
-                    </tr>
-                    <?php if ( ! empty( $opportunities ) ) : ?>
-                        <tr class="gulkl-opportunities-row" style="display:none;">
-                            <td colspan="4">
-                                <div class="gulkl-opportunities">
-                                    <ul>
-                                        <?php foreach ( $opportunities as $opportunity ) : ?>
-                                            <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>" class="<?php echo ( strpos( $opportunity->post_content, get_permalink( $post->ID ) ) !== false ) ? 'active' : 'inactive'; ?>">
-                                                <?php echo esc_html( $opportunity->post_title ); ?>
-                                                <div class="opportunity-actions">
-                                                    <button class="button-primary">Yes</button>
-                                                    <button class="button-secondary">No</button>
-                                                </div>
-                                            </li>
-                                        <?php endforeach; ?>
-                                    </ul>
+                    <div class="gulkl-row">
+                        <div class="gulkl-main-row">
+                            <div class="gulkl-title-col">
+                                <?php echo esc_html( $post->post_title ); ?>
+                                <div class="row-actions">
+                                    <a href="<?php echo get_edit_post_link( $post->ID ); ?>">Edit</a> |
+                                    <a href="<?php echo get_permalink( $post->ID ); ?>">View</a>
                                 </div>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
+                            </div>
+                            <div class="gulkl-keyword-col"><?php echo esc_html( $keyword ); ?></div>
+                            <div class="gulkl-density-col">
+                                <?php echo esc_html( $keyword_density ); ?>%
+                                <span class="dashicons dashicons-editor-help" title="Keyword density is the percentage of times a keyword or phrase appears on a web page compared to the total number of words on the page."></span>
+                            </div>
+                            <div class="gulkl-backlinks-col"><?php echo esc_html( $backlinks ); ?></div>
+                            <div class="gulkl-opportunities-col">
+                                <?php if ( ! empty( $opportunities ) ) : ?>
+                                    <a href="#" class="gulkl-toggle-opportunities"><span class="dashicons dashicons-plus"></span> Backlink Opportunities</a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php if ( ! empty( $opportunities ) ) : ?>
+                            <div class="gulkl-opportunities" style="display:none;">
+                                <ul>
+                                    <?php foreach ( $opportunities as $opportunity ) : ?>
+                                        <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>" class="<?php echo ( strpos( $opportunity->post_content, get_permalink( $post->ID ) ) !== false ) ? 'active' : 'inactive'; ?>">
+                                            <?php echo esc_html( $opportunity->post_title ); ?>
+                                            <div class="opportunity-actions">
+                                                <button class="button-primary">Yes</button>
+                                                <button class="button-secondary">No</button>
+                                            </div>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                     <?php
                 }
                 ?>
