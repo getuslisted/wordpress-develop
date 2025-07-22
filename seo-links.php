@@ -47,6 +47,8 @@ add_action( 'wp_ajax_seolinks_create_link', 'seolinks_create_link_callback' );
 add_action( 'wp_ajax_seolinks_dismiss_link', 'seolinks_dismiss_link_callback' );
 add_action( 'wp_ajax_seolinks_bulk_create_links', 'seolinks_bulk_create_links_callback' );
 add_action( 'wp_ajax_seolinks_bulk_create_external_links', 'seolinks_bulk_create_external_links_callback' );
+add_action( 'wp_ajax_seolinks_save_keyword', 'seolinks_save_keyword_callback' );
+add_action( 'wp_ajax_seolinks_scan_for_broken_links', 'seolinks_scan_for_broken_links_callback' );
 
 function seolinks_get_focus_keyword( $post_id ) {
     $keyword = '';
@@ -88,6 +90,7 @@ function seolinks_admin_page() {
             <a href="?page=seo-links&tab=same_keyword" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'same_keyword' ) ? 'nav-tab-active' : ''; ?>">Same Keyword</a>
             <a href="?page=seo-links&tab=no_keyword" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'no_keyword' ) ? 'nav-tab-active' : ''; ?>">No Keyword</a>
             <a href="?page=seo-links&tab=external_links" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'external_links' ) ? 'nav-tab-active' : ''; ?>">External Links</a>
+            <a href="?page=seo-links&tab=broken_links" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'broken_links' ) ? 'nav-tab-active' : ''; ?>">Broken Links</a>
         </h2>
 
         <?php
@@ -102,6 +105,8 @@ function seolinks_admin_page() {
             seolinks_display_no_keyword_table();
         } elseif ( $tab === 'external_links' ) {
             seolinks_display_external_links_page();
+        } elseif ( $tab === 'broken_links' ) {
+            seolinks_display_broken_links_page();
         }
         ?>
     </div>
@@ -117,6 +122,7 @@ function seolinks_display_post_type_table( $post_type ) {
                 <tr>
                     <th>Title</th>
                     <th>Keyword</th>
+                    <th>Keyword Density</th>
                     <th>Backlinks</th>
                     <th>Opportunities</th>
                 </tr>
@@ -130,10 +136,12 @@ function seolinks_display_post_type_table( $post_type ) {
                     if ( ! empty( $post->post_content ) ) {
                         $backlinks = substr_count( $post->post_content, get_permalink( $post->ID ) );
                     }
+                    $keyword_density = seolinks_calculate_keyword_density( $post->post_content, $keyword );
                     ?>
                     <tr>
                         <td><?php echo esc_html( $post->post_title ); ?></td>
                         <td><?php echo esc_html( $keyword ); ?></td>
+                        <td><?php echo esc_html( $keyword_density ); ?>%</td>
                         <td><?php echo esc_html( $backlinks ); ?></td>
                         <td>
                             <?php if ( ! empty( $opportunities ) ) : ?>
@@ -161,6 +169,21 @@ function seolinks_display_post_type_table( $post_type ) {
     } else {
         echo '<p>No ' . esc_html( $post_type ) . 's found.</p>';
     }
+}
+
+function seolinks_calculate_keyword_density( $content, $keyword ) {
+    if ( empty( $content ) || empty( $keyword ) ) {
+        return 0;
+    }
+
+    $word_count = str_word_count( strip_tags( $content ) );
+    $keyword_count = substr_count( strtolower( strip_tags( $content ) ), strtolower( $keyword ) );
+
+    if ( $word_count === 0 ) {
+        return 0;
+    }
+
+    return round( ( $keyword_count / $word_count ) * 100, 2 );
 }
 
 function seolinks_display_same_keyword_table() {
@@ -362,6 +385,69 @@ function seolinks_create_link_callback() {
         } else {
             wp_send_json_success( array( 'message' => 'Link created.' ) );
         }
+    } else {
+        wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+    }
+}
+
+function seolinks_scan_for_broken_links_callback() {
+    check_ajax_referer( 'seolinks-ajax-nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
+    }
+
+    $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
+    $broken_links = array();
+
+    foreach ( $posts as $post ) {
+        $content = $post->post_content;
+        preg_match_all( '/<a\s[^>]*href=([\"\']??)([^\" >]*?)\\1[^>]*>(.*)<\/a>/siU', $content, $matches );
+
+        if ( ! empty( $matches[2] ) ) {
+            foreach ( $matches[2] as $link ) {
+                $response = wp_remote_head( $link, array( 'timeout' => 5 ) );
+                if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) >= 400 ) {
+                    $broken_links[] = array(
+                        'post_id' => $post->ID,
+                        'post_title' => $post->post_title,
+                        'link' => $link,
+                    );
+                }
+            }
+        }
+    }
+
+    wp_send_json_success( array( 'broken_links' => $broken_links ) );
+}
+
+function seolinks_display_broken_links_page() {
+    ?>
+    <div class="wrap">
+        <h2>Broken Links</h2>
+        <button class="button-primary" id="scan-for-broken-links">Scan for Broken Links</button>
+        <div id="broken-links-results"></div>
+    </div>
+    <?php
+}
+
+function seolinks_save_keyword_callback() {
+    check_ajax_referer( 'seolinks-ajax-nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
+    }
+
+    $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+    $keyword = isset( $_POST['keyword'] ) ? sanitize_text_field( $_POST['keyword'] ) : '';
+
+    if ( $post_id && ! empty( $keyword ) ) {
+        if ( class_exists( 'WPSEO_Meta' ) ) {
+            update_post_meta( $post_id, '_yoast_wpseo_focuskw', $keyword );
+        } elseif ( class_exists( 'RankMath' ) ) {
+            update_post_meta( $post_id, 'rank_math_focus_keyword', $keyword );
+        }
+        wp_send_json_success( array( 'message' => 'Keyword saved.' ) );
     } else {
         wp_send_json_error( array( 'message' => 'Invalid request.' ) );
     }
