@@ -39,4 +39,33 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    $('#add-all-external, #add-5-external, #add-10-external').on('click', function() {
+        var limit = 0;
+        if ( $(this).is('#add-5-external') ) {
+            limit = 5;
+        } else if ( $(this).is('#add-10-external') ) {
+            limit = 10;
+        }
+
+        var opportunity_ids = [];
+        $('tr[data-opportunity-id]').each(function() {
+            opportunity_ids.push($(this).data('opportunity-id'));
+        });
+
+        $.post(ajaxurl, {
+            action: 'seolinks_bulk_create_external_links',
+            keyword: $('input[name="keyword"]').val(),
+            url: $('input[name="url"]').val(),
+            limit: limit,
+            opportunity_ids: opportunity_ids,
+            nonce: seolinks_ajax.nonce
+        }, function(response) {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert(response.data.message);
+            }
+        });
+    });
 });

@@ -46,6 +46,7 @@ add_action( 'admin_enqueue_scripts', 'seolinks_enqueue_scripts' );
 add_action( 'wp_ajax_seolinks_create_link', 'seolinks_create_link_callback' );
 add_action( 'wp_ajax_seolinks_dismiss_link', 'seolinks_dismiss_link_callback' );
 add_action( 'wp_ajax_seolinks_bulk_create_links', 'seolinks_bulk_create_links_callback' );
+add_action( 'wp_ajax_seolinks_bulk_create_external_links', 'seolinks_bulk_create_external_links_callback' );
 
 function seolinks_get_focus_keyword( $post_id ) {
     $keyword = '';
@@ -81,31 +82,28 @@ function seolinks_admin_page() {
     ?>
     <div class="wrap">
         <h1>Get Us Listed Keyword Linker</h1>
-        <div>
-            <button class="button-primary" id="add-to-first-5">Add to first 5</button>
-            <button class="button-primary" id="add-to-first-10">Add to first 10</button>
-        </div>
+        <h2 class="nav-tab-wrapper">
+            <a href="?page=seo-links&tab=pages" class="nav-tab <?php echo ( ! isset( $_GET['tab'] ) || $_GET['tab'] === 'pages' ) ? 'nav-tab-active' : ''; ?>">Pages</a>
+            <a href="?page=seo-links&tab=posts" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'posts' ) ? 'nav-tab-active' : ''; ?>">Posts</a>
+            <a href="?page=seo-links&tab=same_keyword" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'same_keyword' ) ? 'nav-tab-active' : ''; ?>">Same Keyword</a>
+            <a href="?page=seo-links&tab=no_keyword" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'no_keyword' ) ? 'nav-tab-active' : ''; ?>">No Keyword</a>
+            <a href="?page=seo-links&tab=external_links" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'external_links' ) ? 'nav-tab-active' : ''; ?>">External Links</a>
+        </h2>
 
-        <h2>Pages</h2>
-        <?php seolinks_display_post_type_table( 'page' ); ?>
-
-        <h2>Posts</h2>
-        <?php seolinks_display_post_type_table( 'post' ); ?>
-
-        <h2>Pages/Posts with Same Keyword</h2>
-        <?php seolinks_display_same_keyword_table(); ?>
-
-        <h2>Pages/Posts with No Keyword</h2>
-        <?php seolinks_display_no_keyword_table(); ?>
-
-        <hr>
-        <h2>External Links</h2>
-        <form method="post" action="">
-            <?php wp_nonce_field( 'seolinks_external_link' ); ?>
-            <input type="text" name="keyword" placeholder="Keyword">
-            <input type="text" name="url" placeholder="URL">
-            <input type="submit" name="add_external_link" class="button-primary" value="Add Link">
-        </form>
+        <?php
+        $tab = isset( $_GET['tab'] ) ? $_GET['tab'] : 'pages';
+        if ( $tab === 'pages' ) {
+            seolinks_display_post_type_table( 'page' );
+        } elseif ( $tab === 'posts' ) {
+            seolinks_display_post_type_table( 'post' );
+        } elseif ( $tab === 'same_keyword' ) {
+            seolinks_display_same_keyword_table();
+        } elseif ( $tab === 'no_keyword' ) {
+            seolinks_display_no_keyword_table();
+        } elseif ( $tab === 'external_links' ) {
+            seolinks_display_external_links_page();
+        }
+        ?>
     </div>
     <?php
 }
@@ -241,20 +239,69 @@ function seolinks_display_no_keyword_table() {
     }
 }
 
+function seolinks_display_external_links_page() {
+    ?>
+    <div class="wrap">
+        <h2>External Links</h2>
+        <form method="post" action="">
+            <?php wp_nonce_field( 'seolinks_external_link' ); ?>
+            <input type="text" name="keyword" placeholder="Keyword">
+            <input type="text" name="url" placeholder="URL">
+            <input type="submit" name="find_opportunities" class="button-primary" value="Find Opportunities">
+        </form>
+    </div>
+    <?php
+}
+
 function seolinks_handle_external_link_form() {
-    if ( isset( $_POST['add_external_link'] ) ) {
+    if ( isset( $_POST['find_opportunities'] ) ) {
         check_admin_referer( 'seolinks_external_link' );
         $keyword = sanitize_text_field( $_POST['keyword'] );
         $url = esc_url_raw( $_POST['url'] );
 
         if ( ! empty( $keyword ) && ! empty( $url ) ) {
             $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
+            $opportunities = array();
             foreach ( $posts as $post ) {
-                $new_content = preg_replace( '/' . preg_quote( $keyword, '/' ) . '/', '<a href="' . esc_url( $url ) . '">' . esc_html( $keyword ) . '</a>', $post->post_content, 1 );
-                wp_update_post( array(
-                    'ID' => $post->ID,
-                    'post_content' => $new_content,
-                ) );
+                if ( stripos( $post->post_content, $keyword ) !== false ) {
+                    $opportunities[] = $post;
+                }
+            }
+
+            if ( ! empty( $opportunities ) ) {
+                ?>
+                <h3>Opportunities for "<?php echo esc_html( $keyword ); ?>"</h3>
+                <div>
+                    <button class="button-primary" id="add-all-external">Add All</button>
+                    <button class="button-primary" id="add-5-external">Add 5</button>
+                    <button class="button-primary" id="add-10-external">Add 10</button>
+                </div>
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        foreach ( $opportunities as $opportunity ) {
+                            ?>
+                            <tr data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>">
+                                <td><?php echo esc_html( $opportunity->post_title ); ?></td>
+                                <td>
+                                    <button class="button-primary">Yes</button>
+                                    <button class="button-secondary">No</button>
+                                </td>
+                            </tr>
+                            <?php
+                        }
+                        ?>
+                    </tbody>
+                </table>
+                <?php
+            } else {
+                echo '<p>No opportunities found for "' . esc_html( $keyword ) . '".</p>';
             }
         }
     }
@@ -276,11 +323,14 @@ function seolinks_update_json_on_new_post( $post_id, $post ) {
         $data[] = $new_post_data;
         file_put_contents( $json_file, json_encode( $data ) );
 
-        // Send notification.
-        $to = get_option( 'admin_email' );
-        $subject = 'New Post with Backlink Opportunities';
-        $body = 'A new post has been published: ' . $post->post_title;
-        wp_mail( $to, $subject, $body );
+        // Add admin notification.
+        add_action( 'admin_notices', function() use ( $post ) {
+            ?>
+            <div class="notice notice-success is-dismissible">
+                <p>New post with backlink opportunities: <?php echo esc_html( $post->post_title ); ?></p>
+            </div>
+            <?php
+        } );
     }
 }
 add_action( 'wp_insert_post', 'seolinks_update_json_on_new_post', 10, 2 );
@@ -312,6 +362,37 @@ function seolinks_create_link_callback() {
         } else {
             wp_send_json_success( array( 'message' => 'Link created.' ) );
         }
+    } else {
+        wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+    }
+}
+
+function seolinks_bulk_create_external_links_callback() {
+    check_ajax_referer( 'seolinks-ajax-nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
+    }
+
+    $keyword = isset( $_POST['keyword'] ) ? sanitize_text_field( $_POST['keyword'] ) : '';
+    $url = isset( $_POST['url'] ) ? esc_url_raw( $_POST['url'] ) : '';
+    $limit = isset( $_POST['limit'] ) ? intval( $_POST['limit'] ) : 0;
+    $opportunity_ids = isset( $_POST['opportunity_ids'] ) ? array_map( 'intval', $_POST['opportunity_ids'] ) : array();
+
+    if ( ! empty( $keyword ) && ! empty( $url ) && ! empty( $opportunity_ids ) ) {
+        if ( $limit > 0 ) {
+            $opportunity_ids = array_slice( $opportunity_ids, 0, $limit );
+        }
+
+        foreach ( $opportunity_ids as $opportunity_id ) {
+            $opportunity = get_post( $opportunity_id );
+            $new_content = preg_replace( '/' . preg_quote( $keyword, '/' ) . '/', '<a href="' . esc_url( $url ) . '">' . esc_html( $keyword ) . '</a>', $opportunity->post_content, 1 );
+            wp_update_post( array(
+                'ID' => $opportunity_id,
+                'post_content' => $new_content,
+            ) );
+        }
+        wp_send_json_success( array( 'message' => 'Bulk links created.' ) );
     } else {
         wp_send_json_error( array( 'message' => 'Invalid request.' ) );
     }
@@ -374,9 +455,8 @@ function seolinks_bulk_create_links_callback() {
                 ) );
             }
         }
-        echo 'Bulk links created.';
+        wp_send_json_success( array( 'message' => 'Bulk links created.' ) );
     } else {
         wp_send_json_error( array( 'message' => 'Invalid request.' ) );
     }
-    wp_die();
 }
