@@ -80,37 +80,24 @@ function seolinks_find_link_opportunities( $post_id, $keyword ) {
 function seolinks_admin_page() {
     ?>
     <div class="wrap">
-        <h1>SEO Links</h1>
+        <h1>Get Us Listed Keyword Linker</h1>
         <div>
             <button class="button-primary" id="add-to-first-5">Add to first 5</button>
             <button class="button-primary" id="add-to-first-10">Add to first 10</button>
         </div>
-        <?php
-        $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
-        if ( $posts ) {
-            echo '<ul>';
-            foreach ( $posts as $post ) {
-                $keyword = seolinks_get_focus_keyword( $post->ID );
-                $opportunities = seolinks_find_link_opportunities( $post->ID, $keyword );
-                echo '<li>';
-                if ( ! empty( $opportunities ) ) {
-                    echo '<span class="dashicons dashicons-plus"></span> ';
-                    echo 'Page: ' . esc_html( $post->post_title ) . ' (Keyword: ' . esc_html( $keyword ) . ')';
-                    echo '<ul class="opportunities" style="display:none;">';
-                    foreach ( $opportunities as $opportunity ) {
-                        echo '<li data-post-id="' . esc_attr( $post->ID ) . '" data-opportunity-id="' . esc_attr( $opportunity->ID ) . '">' . esc_html( $opportunity->post_title ) . ' <button class="button-primary">Yes</button> <button class="button-secondary">No</button></li>';
-                    }
-                    echo '</ul>';
-                } else {
-                    echo 'Page: ' . esc_html( $post->post_title ) . ' (Keyword: ' . esc_html( $keyword ) . ')';
-                }
-                echo '</li>';
-            }
-            echo '</ul>';
-        } else {
-            echo '<p>No posts or pages found.</p>';
-        }
-        ?>
+
+        <h2>Pages</h2>
+        <?php seolinks_display_post_type_table( 'page' ); ?>
+
+        <h2>Posts</h2>
+        <?php seolinks_display_post_type_table( 'post' ); ?>
+
+        <h2>Pages/Posts with Same Keyword</h2>
+        <?php seolinks_display_same_keyword_table(); ?>
+
+        <h2>Pages/Posts with No Keyword</h2>
+        <?php seolinks_display_no_keyword_table(); ?>
+
         <hr>
         <h2>External Links</h2>
         <form method="post" action="">
@@ -121,6 +108,134 @@ function seolinks_admin_page() {
         </form>
     </div>
     <?php
+}
+
+function seolinks_display_post_type_table( $post_type ) {
+    $posts = get_posts( array( 'post_type' => $post_type, 'numberposts' => -1 ) );
+    if ( $posts ) {
+        ?>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Keyword</th>
+                    <th>Backlinks</th>
+                    <th>Opportunities</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                foreach ( $posts as $post ) {
+                    $keyword = seolinks_get_focus_keyword( $post->ID );
+                    $opportunities = seolinks_find_link_opportunities( $post->ID, $keyword );
+                    $backlinks = substr_count( get_permalink( $post->ID ), $post->post_content );
+                    ?>
+                    <tr>
+                        <td><?php echo esc_html( $post->post_title ); ?></td>
+                        <td><?php echo esc_html( $keyword ); ?></td>
+                        <td><?php echo esc_html( $backlinks ); ?></td>
+                        <td>
+                            <?php if ( ! empty( $opportunities ) ) : ?>
+                                <span class="dashicons dashicons-plus"></span>
+                                <div class="opportunities" style="display:none;">
+                                    <ul>
+                                        <?php foreach ( $opportunities as $opportunity ) : ?>
+                                            <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>">
+                                                <?php echo esc_html( $opportunity->post_title ); ?>
+                                                <button class="button-primary">Yes</button>
+                                                <button class="button-secondary">No</button>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php
+                }
+                ?>
+            </tbody>
+        </table>
+        <?php
+    } else {
+        echo '<p>No ' . esc_html( $post_type ) . 's found.</p>';
+    }
+}
+
+function seolinks_display_same_keyword_table() {
+    $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
+    $keywords = array();
+    foreach ( $posts as $post ) {
+        $keyword = seolinks_get_focus_keyword( $post->ID );
+        if ( ! empty( $keyword ) ) {
+            if ( ! isset( $keywords[ $keyword ] ) ) {
+                $keywords[ $keyword ] = array();
+            }
+            $keywords[ $keyword ][] = $post;
+        }
+    }
+
+    foreach ( $keywords as $keyword => $posts ) {
+        if ( count( $posts ) > 1 ) {
+            ?>
+            <h3><?php echo esc_html( $keyword ); ?></h3>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    foreach ( $posts as $post ) {
+                        ?>
+                        <tr>
+                            <td><?php echo esc_html( $post->post_title ); ?></td>
+                        </tr>
+                        <?php
+                    }
+                    ?>
+                </tbody>
+            </table>
+            <?php
+        }
+    }
+}
+
+function seolinks_display_no_keyword_table() {
+    $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
+    $no_keyword_posts = array();
+    foreach ( $posts as $post ) {
+        $keyword = seolinks_get_focus_keyword( $post->ID );
+        if ( empty( $keyword ) ) {
+            $no_keyword_posts[] = $post;
+        }
+    }
+
+    if ( ! empty( $no_keyword_posts ) ) {
+        ?>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                foreach ( $no_keyword_posts as $post ) {
+                    ?>
+                    <tr>
+                        <td><?php echo esc_html( $post->post_title ); ?></td>
+                    </tr>
+                    <?php
+                }
+                ?>
+            </tbody>
+        </table>
+        <?php
+    } else {
+        echo '<p>No posts or pages with no keyword found.</p>';
+    }
 }
 
 function seolinks_handle_external_link_form() {
