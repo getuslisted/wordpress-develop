@@ -128,7 +128,10 @@ function seolinks_display_post_type_table( $post_type ) {
                 foreach ( $posts as $post ) {
                     $keyword = seolinks_get_focus_keyword( $post->ID );
                     $opportunities = seolinks_find_link_opportunities( $post->ID, $keyword );
-                    $backlinks = substr_count( get_permalink( $post->ID ), $post->post_content );
+                    $backlinks = 0;
+                    if ( ! empty( $post->post_content ) ) {
+                        $backlinks = substr_count( $post->post_content, get_permalink( $post->ID ) );
+                    }
                     ?>
                     <tr>
                         <td><?php echo esc_html( $post->post_title ); ?></td>
