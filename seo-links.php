@@ -459,6 +459,10 @@ function gulkl_create_link_callback() {
     $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
     $opportunity_id = isset( $_POST['opportunity_id'] ) ? intval( $_POST['opportunity_id'] ) : 0;
 
+    if ( ! current_user_can( 'edit_post', $opportunity_id ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to edit this post.' ) );
+    }
+
     if ( $post_id && $opportunity_id ) {
         $post = get_post( $post_id );
         $opportunity = get_post( $opportunity_id );
@@ -553,6 +557,10 @@ function gulkl_save_keyword_callback() {
 
     $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
     $keyword = isset( $_POST['keyword'] ) ? sanitize_text_field( $_POST['keyword'] ) : '';
+
+    if ( ! current_user_can( 'edit_post', $post_id ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to edit this post.' ) );
+    }
 
     if ( $post_id && ! empty( $keyword ) ) {
         if ( class_exists( 'WPSEO_Meta' ) ) {
