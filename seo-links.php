@@ -88,7 +88,7 @@ function gulkl_find_link_opportunities( $post_id, $keyword ) {
 
 function gulkl_admin_page() {
     ?>
-    <div class="wrap">
+    <div class="wrap gulkl-wrap">
         <h1>Get Us Listed Keyword Linker</h1>
         <h2 class="nav-tab-wrapper">
             <a href="?page=get-us-listed-keyword-linker&tab=pages" class="nav-tab <?php echo ( ! isset( $_GET['tab'] ) || $_GET['tab'] === 'pages' ) ? 'nav-tab-active' : ''; ?>">Pages</a>
@@ -205,7 +205,7 @@ function gulkl_display_post_type_table( $post_type ) {
                         <td>
                             <?php if ( ! empty( $opportunities ) ) : ?>
                                 <span class="dashicons dashicons-plus"></span>
-                                <div class="opportunities" style="display:none;">
+                                <div class="gulkl-opportunities" style="display:none;">
                                     <ul>
                                         <?php foreach ( $opportunities as $opportunity ) : ?>
                                             <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>">

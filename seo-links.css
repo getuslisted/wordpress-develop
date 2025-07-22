@@ -1,33 +1,33 @@
-.wrap .wp-list-table {
+.gulkl-wrap .wp-list-table {
     border-radius: 4px;
     background-color: #fff;
     border: 1px solid #e5e5e5;
 }
 
-.wrap .wp-list-table th {
+.gulkl-wrap .wp-list-table th {
     background-color: #f5f5f5;
 }
 
-.wrap .wp-list-table tbody tr:hover {
+.gulkl-wrap .wp-list-table tbody tr:hover {
     background-color: #f0f0f0;
 }
 
-.wrap .opportunities ul {
+.gulkl-wrap .gulkl-opportunities ul {
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-.wrap .opportunities li {
+.gulkl-wrap .gulkl-opportunities li {
     padding: 5px 0;
 }
 
-.wrap .button-primary {
+.gulkl-wrap .button-primary {
     background-color: #4CAF50;
     border-color: #4CAF50;
 }
 
-.wrap .button-secondary {
+.gulkl-wrap .button-secondary {
     background-color: #f44336;
     border-color: #f44336;
     color: #fff;
