@@ -802,7 +802,7 @@ function gulkl_display_action_log_page() {
                         <td><?php echo esc_html( $action->status ); ?></td>
                         <td>
                             <?php if ( $action->status === 'completed' ) : ?>
-                                <button class="button-secondary undo-action" data-action-id="<?php echo esc_attr( $action->id ); ?>">Undo</button>
+                                <button class="button-secondary gulkl-undo-action" data-action-id="<?php echo esc_attr( $action->id ); ?>">Undo</button>
                             <?php endif; ?>
                         </td>
                     </tr>

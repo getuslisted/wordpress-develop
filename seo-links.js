@@ -127,7 +127,7 @@ jQuery(document).ready(function($) {
         scan_next_post();
     });
 
-    $('.undo-action').on('click', function() {
+    $('.gulkl-undo-action').on('click', function() {
         var button = $(this);
         var action_id = button.data('action-id');
 
