@@ -143,4 +143,29 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    if ( $('#real-time-log').length ) {
+        var log = $('#real-time-log');
+        var i = 0;
+
+        function process_next_action() {
+            $.post(ajaxurl, {
+                action: 'gulkl_process_action_queue',
+                nonce: gulkl_ajax.nonce
+            }, function(response) {
+                if (response.success) {
+                    if (response.data.message) {
+                        log.append('<p>' + response.data.message + '</p>');
+                        process_next_action();
+                    } else {
+                        log.append('<p>All actions complete.</p>');
+                    }
+                } else {
+                    log.append('<p>An error occurred: ' + response.data.message + '</p>');
+                }
+            });
+        }
+
+        process_next_action();
+    }
 });

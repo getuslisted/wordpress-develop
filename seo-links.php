@@ -109,6 +109,7 @@ function gulkl_admin_page() {
             <a href="?page=get-us-listed-keyword-linker&tab=broken_links" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'broken_links' ) ? 'nav-tab-active' : ''; ?>">Broken Links</a>
             <a href="?page=get-us-listed-keyword-linker&tab=404_errors" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === '404_errors' ) ? 'nav-tab-active' : ''; ?>">404 Errors</a>
             <a href="?page=get-us-listed-keyword-linker&tab=action_log" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'action_log' ) ? 'nav-tab-active' : ''; ?>">Action Log</a>
+            <a href="?page=get-us-listed-keyword-linker&tab=real_time_log" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'real_time_log' ) ? 'nav-tab-active' : ''; ?>">Real-Time Log</a>
         </h2>
 
         <?php
@@ -129,6 +130,8 @@ function gulkl_admin_page() {
             gulkl_display_404_errors_page();
         } elseif ( $tab === 'action_log' ) {
             gulkl_display_action_log_page();
+        } elseif ( $tab === 'real_time_log' ) {
+            gulkl_display_real_time_log_page();
         }
         ?>
     </div>
@@ -136,11 +139,12 @@ function gulkl_admin_page() {
 }
 
 function gulkl_display_post_type_table( $post_type ) {
-    $posts = get_transient( 'gulkl_posts_' . $post_type );
-    if ( false === $posts ) {
-        $posts = get_posts( array( 'post_type' => $post_type, 'numberposts' => -1 ) );
-        set_transient( 'gulkl_posts_' . $post_type, $posts, 12 * HOUR_IN_SECONDS );
-    }
+    $posts = get_posts( array( 'post_type' => $post_type, 'numberposts' => -1 ) );
+    usort( $posts, function( $a, $b ) {
+        $a_opportunities = count( gulkl_find_link_opportunities( $a->ID, gulkl_get_focus_keyword( $a->ID ) ) );
+        $b_opportunities = count( gulkl_find_link_opportunities( $b->ID, gulkl_get_focus_keyword( $b->ID ) ) );
+        return $b_opportunities - $a_opportunities;
+    } );
     if ( $posts ) {
         ?>
         <div>
@@ -174,6 +178,7 @@ function gulkl_display_post_type_table( $post_type ) {
                     ?>
                     <tr>
                         <td>
+                            <a href="#" class="gulkl-toggle-opportunities"><span class="dashicons dashicons-plus"></span></a>
                             <?php echo esc_html( $post->post_title ); ?>
                             <div class="row-actions">
                                 <a href="<?php echo get_edit_post_link( $post->ID ); ?>">Edit</a> |
@@ -183,7 +188,7 @@ function gulkl_display_post_type_table( $post_type ) {
                                 <div class="gulkl-opportunities" style="display:none;">
                                     <ul>
                                         <?php foreach ( $opportunities as $opportunity ) : ?>
-                                            <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>">
+                                            <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>" class="<?php echo ( strpos( $opportunity->post_content, get_permalink( $post->ID ) ) !== false ) ? 'active' : 'inactive'; ?>">
                                                 <?php echo esc_html( $opportunity->post_title ); ?>
                                                 <div class="opportunity-actions">
                                                     <button class="button-primary">Yes</button>
@@ -201,11 +206,6 @@ function gulkl_display_post_type_table( $post_type ) {
                             <span class="dashicons dashicons-editor-help" title="Keyword density is the percentage of times a keyword or phrase appears on a web page compared to the total number of words on the page."></span>
                         </td>
                         <td><?php echo esc_html( $backlinks ); ?></td>
-                        <td>
-                            <?php if ( ! empty( $opportunities ) ) : ?>
-                                <a href="#" class="gulkl-toggle-opportunities"><span class="dashicons dashicons-plus"></span></a>
-                            <?php endif; ?>
-                        </td>
                     </tr>
                     <?php
                 }
@@ -524,9 +524,13 @@ function gulkl_process_action_queue() {
             array( 'status' => 'completed' ),
             array( 'id' => $action->id )
         );
+
+        wp_send_json_success( array( 'message' => 'Processed action ' . $action->id ) );
+    } else {
+        wp_send_json_success( array( 'message' => '' ) );
     }
 }
-add_action( 'gulkl_process_action_queue_event', 'gulkl_process_action_queue' );
+add_action( 'wp_ajax_gulkl_process_action_queue', 'gulkl_process_action_queue' );
 
 if ( ! wp_next_scheduled( 'gulkl_process_action_queue_event' ) ) {
     wp_schedule_event( time(), 'hourly', 'gulkl_process_action_queue_event' );
@@ -594,7 +598,7 @@ function gulkl_bulk_create_links_callback() {
                 );
             }
         }
-        wp_send_json_success( array( 'redirect_url' => admin_url( 'admin.php?page=get-us-listed-keyword-linker&tab=action_log' ) ) );
+        wp_send_json_success( array( 'redirect_url' => admin_url( 'admin.php?page=get-us-listed-keyword-linker&tab=real_time_log' ) ) );
     } else {
         wp_send_json_error( array( 'message' => 'Invalid request.' ) );
     }
@@ -697,6 +701,15 @@ function gulkl_undo_action_callback() {
     } else {
         wp_send_json_error( array( 'message' => 'Action not found.' ) );
     }
+}
+
+function gulkl_display_real_time_log_page() {
+    ?>
+    <div class="wrap">
+        <h2>Real-Time Action Log</h2>
+        <div id="real-time-log"></div>
+    </div>
+    <?php
 }
 
 function gulkl_display_action_log_page() {
