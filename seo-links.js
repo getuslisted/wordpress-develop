@@ -1,7 +1,7 @@
 jQuery(document).ready(function($) {
-    $('.dashicons-plus').on('click', function() {
-        $('.opportunities').slideUp();
-        $(this).next('.opportunities').slideDown();
+    $('.gulkl-toggle-opportunities').on('click', function(e) {
+        e.preventDefault();
+        $(this).next('.gulkl-opportunities').slideToggle();
     });
 
     $('.button-primary, .button-secondary').on('click', function() {
@@ -125,5 +125,22 @@ jQuery(document).ready(function($) {
         }
 
         scan_next_post();
+    });
+
+    $('.undo-action').on('click', function() {
+        var button = $(this);
+        var action_id = button.data('action-id');
+
+        $.post(ajaxurl, {
+            action: 'gulkl_undo_action',
+            action_id: action_id,
+            nonce: gulkl_ajax.nonce
+        }, function(response) {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert(response.data.message);
+            }
+        });
     });
 });
