@@ -75,13 +75,13 @@ jQuery(document).ready(function($) {
         var keyword = button.prev('input').val();
 
         $.post(ajaxurl, {
-            action: 'seolinks_save_keyword',
+            action: 'gulkl_save_keyword',
             post_id: post_id,
             keyword: keyword,
-            nonce: seolinks_ajax.nonce
+            nonce: gulkl_ajax.nonce
         }, function(response) {
             if (response.success) {
-                // Do nothing on success, as the page will be reloaded.
+                location.reload();
             } else {
                 alert(response.data.message);
             }
