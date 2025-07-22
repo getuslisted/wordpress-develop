@@ -1,0 +1,242 @@
+<?php
+/**
+ * Plugin Name: SEO Links
+ * Description: A plugin to manage internal and external links for SEO.
+ * Version: 1.0
+ * Author: Jules
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // Exit if accessed directly.
+}
+
+function seolinks_activate() {
+    $upload_dir = wp_upload_dir();
+    $json_file = $upload_dir['basedir'] . '/seo-links-data.json';
+
+    if ( ! file_exists( $json_file ) ) {
+        file_put_contents( $json_file, '[]' );
+    }
+}
+register_activation_hook( __FILE__, 'seolinks_activate' );
+
+function seolinks_admin_menu() {
+    add_menu_page(
+        'SEO Links',
+        'SEO Links',
+        'manage_options',
+        'seo-links',
+        'seolinks_admin_page',
+        'dashicons-admin-links'
+    );
+}
+add_action( 'admin_menu', 'seolinks_admin_menu' );
+
+function seolinks_enqueue_scripts( $hook ) {
+    if ( 'toplevel_page_seo-links' !== $hook ) {
+        return;
+    }
+    wp_enqueue_style( 'seo-links-css', plugins_url( 'seo-links.css', __FILE__ ), array(), '1.0' );
+    wp_enqueue_script( 'seo-links-js', plugins_url( 'seo-links.js', __FILE__ ), array( 'jquery' ), '1.0', true );
+}
+add_action( 'admin_enqueue_scripts', 'seolinks_enqueue_scripts' );
+
+add_action( 'wp_ajax_seolinks_create_link', 'seolinks_create_link_callback' );
+add_action( 'wp_ajax_seolinks_dismiss_link', 'seolinks_dismiss_link_callback' );
+add_action( 'wp_ajax_seolinks_bulk_create_links', 'seolinks_bulk_create_links_callback' );
+
+function seolinks_get_focus_keyword( $post_id ) {
+    $keyword = '';
+    if ( class_exists( 'WPSEO_Meta' ) ) {
+        $keyword = get_post_meta( $post_id, '_yoast_wpseo_focuskw', true );
+    } elseif ( class_exists( 'RankMath' ) ) {
+        $keyword = get_post_meta( $post_id, 'rank_math_focus_keyword', true );
+    }
+    return $keyword;
+}
+
+function seolinks_find_link_opportunities( $post_id, $keyword ) {
+    $opportunities = array();
+    if ( empty( $keyword ) ) {
+        return $opportunities;
+    }
+
+    $upload_dir = wp_upload_dir();
+    $json_file = $upload_dir['basedir'] . '/seo-links-data.json';
+    $data = json_decode( file_get_contents( $json_file ), true );
+    $dismissed = isset( $data['dismissed'][ $post_id ] ) ? $data['dismissed'][ $post_id ] : array();
+
+    $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1, 'exclude' => array_merge( array( $post_id ), $dismissed ) ) );
+    foreach ( $posts as $post ) {
+        if ( stripos( $post->post_content, $keyword ) !== false ) {
+            $opportunities[] = $post;
+        }
+    }
+    return $opportunities;
+}
+
+function seolinks_admin_page() {
+    ?>
+    <div class="wrap">
+        <h1>SEO Links</h1>
+        <div>
+            <button class="button-primary" id="add-to-first-5">Add to first 5</button>
+            <button class="button-primary" id="add-to-first-10">Add to first 10</button>
+        </div>
+        <?php
+        $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
+        if ( $posts ) {
+            echo '<ul>';
+            foreach ( $posts as $post ) {
+                $keyword = seolinks_get_focus_keyword( $post->ID );
+                $opportunities = seolinks_find_link_opportunities( $post->ID, $keyword );
+                echo '<li>';
+                if ( ! empty( $opportunities ) ) {
+                    echo '<span class="dashicons dashicons-plus"></span> ';
+                    echo 'Page: ' . esc_html( $post->post_title ) . ' (Keyword: ' . esc_html( $keyword ) . ')';
+                    echo '<ul class="opportunities" style="display:none;">';
+                    foreach ( $opportunities as $opportunity ) {
+                        echo '<li data-post-id="' . esc_attr( $post->ID ) . '" data-opportunity-id="' . esc_attr( $opportunity->ID ) . '">' . esc_html( $opportunity->post_title ) . ' <button class="button-primary">Yes</button> <button class="button-secondary">No</button></li>';
+                    }
+                    echo '</ul>';
+                } else {
+                    echo 'Page: ' . esc_html( $post->post_title ) . ' (Keyword: ' . esc_html( $keyword ) . ')';
+                }
+                echo '</li>';
+            }
+            echo '</ul>';
+        } else {
+            echo '<p>No posts or pages found.</p>';
+        }
+        ?>
+        <hr>
+        <h2>External Links</h2>
+        <form method="post" action="">
+            <input type="text" name="keyword" placeholder="Keyword">
+            <input type="text" name="url" placeholder="URL">
+            <input type="submit" name="add_external_link" class="button-primary" value="Add Link">
+        </form>
+    </div>
+    <?php
+}
+
+function seolinks_handle_external_link_form() {
+    if ( isset( $_POST['add_external_link'] ) ) {
+        $keyword = sanitize_text_field( $_POST['keyword'] );
+        $url = esc_url_raw( $_POST['url'] );
+
+        if ( ! empty( $keyword ) && ! empty( $url ) ) {
+            $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
+            foreach ( $posts as $post ) {
+                $new_content = preg_replace( '/' . preg_quote( $keyword, '/' ) . '/', '<a href="' . esc_url( $url ) . '">' . esc_html( $keyword ) . '</a>', $post->post_content, 1 );
+                wp_update_post( array(
+                    'ID' => $post->ID,
+                    'post_content' => $new_content,
+                ) );
+            }
+        }
+    }
+}
+add_action( 'admin_init', 'seolinks_handle_external_link_form' );
+
+function seolinks_update_json_on_new_post( $post_id, $post ) {
+    if ( $post->post_status === 'publish' ) {
+        $upload_dir = wp_upload_dir();
+        $json_file = $upload_dir['basedir'] . '/seo-links-data.json';
+        $data = json_decode( file_get_contents( $json_file ), true );
+
+        $new_post_data = array(
+            'id' => $post_id,
+            'title' => $post->post_title,
+            'keyword' => seolinks_get_focus_keyword( $post_id ),
+        );
+
+        $data[] = $new_post_data;
+        file_put_contents( $json_file, json_encode( $data ) );
+
+        // Send notification.
+        $to = get_option( 'admin_email' );
+        $subject = 'New Post with Backlink Opportunities';
+        $body = 'A new post has been published: ' . $post->post_title;
+        wp_mail( $to, $subject, $body );
+    }
+}
+add_action( 'wp_insert_post', 'seolinks_update_json_on_new_post', 10, 2 );
+
+function seolinks_create_link_callback() {
+    $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+    $opportunity_id = isset( $_POST['opportunity_id'] ) ? intval( $_POST['opportunity_id'] ) : 0;
+
+    if ( $post_id && $opportunity_id ) {
+        $post = get_post( $post_id );
+        $opportunity = get_post( $opportunity_id );
+        $keyword = seolinks_get_focus_keyword( $post_id );
+        $link = get_permalink( $post_id );
+
+        $new_content = preg_replace( '/' . preg_quote( $keyword, '/' ) . '/', '<a href="' . esc_url( $link ) . '">' . esc_html( $keyword ) . '</a>', $opportunity->post_content, 1 );
+        $result = wp_update_post( array(
+            'ID' => $opportunity_id,
+            'post_content' => $new_content,
+        ) );
+
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+        } else {
+            wp_send_json_success( array( 'message' => 'Link created.' ) );
+        }
+    } else {
+        wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+    }
+}
+
+function seolinks_dismiss_link_callback() {
+    $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+    $opportunity_id = isset( $_POST['opportunity_id'] ) ? intval( $_POST['opportunity_id'] ) : 0;
+
+    if ( $post_id && $opportunity_id ) {
+        $upload_dir = wp_upload_dir();
+        $json_file = $upload_dir['basedir'] . '/seo-links-data.json';
+        $data = json_decode( file_get_contents( $json_file ), true );
+
+        if ( ! isset( $data['dismissed'] ) ) {
+            $data['dismissed'] = array();
+        }
+
+        if ( ! isset( $data['dismissed'][ $post_id ] ) ) {
+            $data['dismissed'][ $post_id ] = array();
+        }
+
+        $data['dismissed'][ $post_id ][] = $opportunity_id;
+        if ( file_put_contents( $json_file, json_encode( $data ) ) ) {
+            wp_send_json_success( array( 'message' => 'Link dismissed.' ) );
+        } else {
+            wp_send_json_error( array( 'message' => 'Error saving data.' ) );
+        }
+    } else {
+        wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+    }
+}
+
+function seolinks_bulk_create_links_callback() {
+    $limit = isset( $_POST['limit'] ) ? intval( $_POST['limit'] ) : 0;
+    if ( $limit > 0 ) {
+        $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
+        foreach ( $posts as $post ) {
+            $keyword = seolinks_get_focus_keyword( $post->ID );
+            $opportunities = seolinks_find_link_opportunities( $post->ID, $keyword );
+            $opportunities = array_slice( $opportunities, 0, $limit );
+            foreach ( $opportunities as $opportunity ) {
+                $link = get_permalink( $post->ID );
+                $new_content = preg_replace( '/' . preg_quote( $keyword, '/' ) . '/', '<a href="' . esc_url( $link ) . '">' . esc_html( $keyword ) . '</a>', $opportunity->post_content, 1 );
+                wp_update_post( array(
+                    'ID' => $opportunity->ID,
+                    'post_content' => $new_content,
+                ) );
+            }
+        }
+        echo 'Bulk links created.';
+    } else {
+        wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+    }
+    wp_die();
+}
