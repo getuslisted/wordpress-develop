@@ -1,7 +1,7 @@
 jQuery(document).ready(function($) {
     $('.gulkl-toggle-opportunities').on('click', function(e) {
         e.preventDefault();
-        $(this).closest('td').find('.gulkl-opportunities').slideToggle();
+        $(this).closest('.gulkl-main-row').next('.gulkl-opportunities-row').toggle();
     });
 
     $('.button-primary, .button-secondary').on('click', function() {

@@ -21,6 +21,8 @@ function gulkl_activate() {
         action varchar(255) NOT NULL,
         post_id mediumint(9) NOT NULL,
         opportunity_id mediumint(9) NOT NULL,
+        keyword varchar(255) NOT NULL,
+        link varchar(255) NOT NULL,
         status varchar(255) NOT NULL,
         PRIMARY KEY  (id)
     ) $charset_collate;";
@@ -38,6 +40,14 @@ function gulkl_admin_menu() {
         'get-us-listed-keyword-linker',
         'gulkl_admin_page',
         'dashicons-admin-links'
+    );
+    add_submenu_page(
+        'get-us-listed-keyword-linker',
+        'Settings',
+        'Settings',
+        'manage_options',
+        'gulkl-settings',
+        'gulkl_settings_page'
     );
 }
 add_action( 'admin_menu', 'gulkl_admin_menu' );
@@ -176,7 +186,7 @@ function gulkl_display_post_type_table( $post_type ) {
                     }
                     $keyword_density = gulkl_calculate_keyword_density( $post->post_content, $keyword );
                     ?>
-                    <tr>
+                    <tr class="gulkl-main-row">
                         <td>
                             <a href="#" class="gulkl-toggle-opportunities"><span class="dashicons dashicons-plus"></span></a>
                             <?php echo esc_html( $post->post_title ); ?>
@@ -184,8 +194,18 @@ function gulkl_display_post_type_table( $post_type ) {
                                 <a href="<?php echo get_edit_post_link( $post->ID ); ?>">Edit</a> |
                                 <a href="<?php echo get_permalink( $post->ID ); ?>">View</a>
                             </div>
-                            <?php if ( ! empty( $opportunities ) ) : ?>
-                                <div class="gulkl-opportunities" style="display:none;">
+                        </td>
+                        <td><?php echo esc_html( $keyword ); ?></td>
+                        <td>
+                            <?php echo esc_html( $keyword_density ); ?>%
+                            <span class="dashicons dashicons-editor-help" title="Keyword density is the percentage of times a keyword or phrase appears on a web page compared to the total number of words on the page."></span>
+                        </td>
+                        <td><?php echo esc_html( $backlinks ); ?></td>
+                    </tr>
+                    <?php if ( ! empty( $opportunities ) ) : ?>
+                        <tr class="gulkl-opportunities-row" style="display:none;">
+                            <td colspan="4">
+                                <div class="gulkl-opportunities">
                                     <ul>
                                         <?php foreach ( $opportunities as $opportunity ) : ?>
                                             <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>" class="<?php echo ( strpos( $opportunity->post_content, get_permalink( $post->ID ) ) !== false ) ? 'active' : 'inactive'; ?>">
@@ -198,15 +218,9 @@ function gulkl_display_post_type_table( $post_type ) {
                                         <?php endforeach; ?>
                                     </ul>
                                 </div>
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo esc_html( $keyword ); ?></td>
-                        <td>
-                            <?php echo esc_html( $keyword_density ); ?>%
-                            <span class="dashicons dashicons-editor-help" title="Keyword density is the percentage of times a keyword or phrase appears on a web page compared to the total number of words on the page."></span>
-                        </td>
-                        <td><?php echo esc_html( $backlinks ); ?></td>
-                    </tr>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                     <?php
                 }
                 ?>
@@ -482,6 +496,8 @@ function gulkl_create_link_callback() {
     }
 
     if ( $post_id && $opportunity_id ) {
+        $keyword = gulkl_get_focus_keyword( $post_id );
+        $link = get_permalink( $post_id );
         global $wpdb;
         $table_name = $wpdb->prefix . 'gulkl_actions';
         $wpdb->insert(
@@ -490,6 +506,8 @@ function gulkl_create_link_callback() {
                 'action' => 'create_link',
                 'post_id' => $post_id,
                 'opportunity_id' => $opportunity_id,
+                'keyword' => $keyword,
+                'link' => $link,
                 'status' => 'pending',
             )
         );
@@ -512,11 +530,13 @@ function gulkl_process_action_queue() {
             $keyword = gulkl_get_focus_keyword( $action->post_id );
             $link = get_permalink( $action->post_id );
 
-            $new_content = preg_replace( '/' . preg_quote( $keyword, '/' ) . '/', '<a href="' . esc_url( $link ) . '">' . esc_html( $keyword ) . '</a>', $opportunity->post_content, 1 );
-            wp_update_post( array(
-                'ID' => $action->opportunity_id,
-                'post_content' => $new_content,
-            ) );
+            if ( strpos( $opportunity->post_content, $link ) === false ) {
+                $new_content = preg_replace( '/' . preg_quote( $keyword, '/' ) . '/', '<a href="' . esc_url( $link ) . '">' . esc_html( $keyword ) . '</a>', $opportunity->post_content, 1 );
+                wp_update_post( array(
+                    'ID' => $action->opportunity_id,
+                    'post_content' => $new_content,
+                ) );
+            }
         }
 
         $wpdb->update(
@@ -579,7 +599,8 @@ function gulkl_bulk_create_links_callback() {
 
     $limit = isset( $_POST['limit'] ) ? intval( $_POST['limit'] ) : 0;
     if ( $limit > 0 ) {
-        $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
+        $exempted_pages = get_option( 'gulkl_exempted_pages', array() );
+        $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1, 'exclude' => $exempted_pages ) );
         foreach ( $posts as $post ) {
             $keyword = gulkl_get_focus_keyword( $post->ID );
             $opportunities = gulkl_find_link_opportunities( $post->ID, $keyword );
@@ -703,6 +724,43 @@ function gulkl_undo_action_callback() {
     }
 }
 
+function gulkl_settings_page() {
+    if ( isset( $_POST['gulkl_save_settings'] ) ) {
+        check_admin_referer( 'gulkl_settings' );
+        $exempted_pages = isset( $_POST['exempted_pages'] ) ? array_map( 'intval', $_POST['exempted_pages'] ) : array();
+        update_option( 'gulkl_exempted_pages', $exempted_pages );
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <p>Settings saved.</p>
+        </div>
+        <?php
+    }
+    $exempted_pages = get_option( 'gulkl_exempted_pages', array() );
+    ?>
+    <div class="wrap">
+        <h2>Settings</h2>
+        <form method="post" action="">
+            <h3>Exempted Pages</h3>
+            <p>Select the pages you want to exempt from the bulk add functionality.</p>
+            <select name="exempted_pages[]" multiple style="width:100%;height:200px;">
+                <?php
+                $pages = get_pages();
+                foreach ( $pages as $page ) {
+                    ?>
+                    <option value="<?php echo esc_attr( $page->ID ); ?>" <?php selected( in_array( $page->ID, $exempted_pages ) ); ?>><?php echo esc_html( $page->post_title ); ?></option>
+                    <?php
+                }
+                ?>
+            </select>
+            <?php wp_nonce_field( 'gulkl_settings' ); ?>
+            <p class="submit">
+                <input type="submit" name="gulkl_save_settings" class="button-primary" value="Save Changes">
+            </p>
+        </form>
+    </div>
+    <?php
+}
+
 function gulkl_display_real_time_log_page() {
     ?>
     <div class="wrap">
@@ -726,6 +784,8 @@ function gulkl_display_action_log_page() {
                     <th>Action</th>
                     <th>Post</th>
                     <th>Opportunity</th>
+                    <th>Keyword</th>
+                    <th>Link</th>
                     <th>Status</th>
                     <th>Undo</th>
                 </tr>
@@ -737,6 +797,8 @@ function gulkl_display_action_log_page() {
                         <td><?php echo esc_html( $action->action ); ?></td>
                         <td><a href="<?php echo get_edit_post_link( $action->post_id ); ?>"><?php echo esc_html( get_the_title( $action->post_id ) ); ?></a></td>
                         <td><a href="<?php echo get_edit_post_link( $action->opportunity_id ); ?>"><?php echo esc_html( get_the_title( $action->opportunity_id ) ); ?></a></td>
+                        <td><?php echo esc_html( $action->keyword ); ?></td>
+                        <td><?php echo esc_html( $action->link ); ?></td>
                         <td><?php echo esc_html( $action->status ); ?></td>
                         <td>
                             <?php if ( $action->status === 'completed' ) : ?>
