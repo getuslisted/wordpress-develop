@@ -2,7 +2,23 @@
     margin-bottom: 20px;
 }
 
-.gulkl-row {
+.gulkl-wrap .nav-tab {
+    background-color: #f5f5f5;
+    border-radius: 4px 4px 0 0;
+    border: 1px solid #e5e5e5;
+    border-bottom: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.gulkl-wrap .nav-tab-active {
+    background-color: #fff;
+    border-bottom: 1px solid #fff;
+}
+
+.gulkl-wrap .gulkl-row {
     background-color: #fff;
     border: 1px solid #e5e5e5;
     border-radius: 4px;
@@ -10,10 +26,22 @@
     padding: 20px;
 }
 
-.gulkl-main-row {
+.gulkl-wrap .gulkl-main-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.gulkl-wrap .gulkl-title-col {
+    flex-grow: 1;
+}
+
+.gulkl-wrap .gulkl-keyword-col,
+.gulkl-wrap .gulkl-density-col,
+.gulkl-wrap .gulkl-backlinks-col,
+.gulkl-wrap .gulkl-opportunities-col {
+    width: 150px;
+    text-align: center;
 }
 
 .gulkl-wrap .gulkl-opportunities {
@@ -60,4 +88,18 @@
     background-color: #f44336;
     border-color: #f44336;
     color: #fff;
+}
+
+.gulkl-wrap .button-bar {
+    margin-bottom: 20px;
+}
+
+.gulkl-wrap .button-bar .button {
+    margin-right: 10px;
+}
+
+.gulkl-wrap h1 .dashicons {
+    font-size: 30px;
+    margin-right: 10px;
+    vertical-align: middle;
 }

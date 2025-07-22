@@ -110,7 +110,7 @@ function gulkl_find_link_opportunities( $post_id, $keyword ) {
 function gulkl_admin_page() {
     ?>
     <div class="wrap gulkl-wrap">
-        <h1>Get Us Listed Keyword Linker</h1>
+        <h1><span class="dashicons dashicons-admin-links"></span> Get Us Listed Keyword Linker</h1>
         <h2 class="nav-tab-wrapper">
             <a href="?page=get-us-listed-keyword-linker&tab=pages" class="nav-tab <?php echo ( ! isset( $_GET['tab'] ) || $_GET['tab'] === 'pages' ) ? 'nav-tab-active' : ''; ?>">Pages</a>
             <a href="?page=get-us-listed-keyword-linker&tab=posts" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'posts' ) ? 'nav-tab-active' : ''; ?>">Posts</a>
@@ -617,12 +617,15 @@ function gulkl_bulk_create_links_callback() {
             foreach ( $opportunities as $opportunity ) {
                 global $wpdb;
                 $table_name = $wpdb->prefix . 'gulkl_actions';
+                $link = get_permalink( $post->ID );
                 $wpdb->insert(
                     $table_name,
                     array(
                         'action' => 'create_link',
                         'post_id' => $post->ID,
                         'opportunity_id' => $opportunity->ID,
+                        'keyword' => $keyword,
+                        'link' => $link,
                         'status' => 'pending',
                     )
                 );
