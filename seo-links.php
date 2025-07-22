@@ -221,6 +221,21 @@ function gulkl_display_post_type_table( $post_type ) {
                                 <a href="<?php echo get_edit_post_link( $post->ID ); ?>">Edit</a> |
                                 <a href="<?php echo get_permalink( $post->ID ); ?>">View</a>
                             </div>
+                            <?php if ( ! empty( $opportunities ) ) : ?>
+                                <div class="gulkl-opportunities" style="display:none;">
+                                    <ul>
+                                        <?php foreach ( $opportunities as $opportunity ) : ?>
+                                            <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>">
+                                                <?php echo esc_html( $opportunity->post_title ); ?>
+                                                <div class="opportunity-actions">
+                                                    <button class="button-primary">Yes</button>
+                                                    <button class="button-secondary">No</button>
+                                                </div>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endif; ?>
                         </td>
                         <td><?php echo esc_html( $keyword ); ?></td>
                         <td>
@@ -231,17 +246,6 @@ function gulkl_display_post_type_table( $post_type ) {
                         <td>
                             <?php if ( ! empty( $opportunities ) ) : ?>
                                 <a href="#" class="gulkl-toggle-opportunities"><span class="dashicons dashicons-plus"></span></a>
-                                <div class="gulkl-opportunities" style="display:none;">
-                                    <ul>
-                                        <?php foreach ( $opportunities as $opportunity ) : ?>
-                                            <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>">
-                                                <?php echo esc_html( $opportunity->post_title ); ?>
-                                                <button class="button-primary">Yes</button>
-                                                <button class="button-secondary">No</button>
-                                            </li>
-                                        <?php endforeach; ?>
-                                    </ul>
-                                </div>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -670,15 +674,20 @@ function gulkl_bulk_create_links_callback() {
             $opportunities = gulkl_find_link_opportunities( $post->ID, $keyword );
             $opportunities = array_slice( $opportunities, 0, $limit );
             foreach ( $opportunities as $opportunity ) {
-                $link = get_permalink( $post->ID );
-                $new_content = preg_replace( '/' . preg_quote( $keyword, '/' ) . '/', '<a href="' . esc_url( $link ) . '">' . esc_html( $keyword ) . '</a>', $opportunity->post_content, 1 );
-                wp_update_post( array(
-                    'ID' => $opportunity->ID,
-                    'post_content' => $new_content,
-                ) );
+                global $wpdb;
+                $table_name = $wpdb->prefix . 'gulkl_actions';
+                $wpdb->insert(
+                    $table_name,
+                    array(
+                        'action' => 'create_link',
+                        'post_id' => $post->ID,
+                        'opportunity_id' => $opportunity->ID,
+                        'status' => 'pending',
+                    )
+                );
             }
         }
-        wp_send_json_success( array( 'message' => 'Bulk links created.' ) );
+        wp_send_json_success( array( 'redirect_url' => admin_url( 'admin.php?page=get-us-listed-keyword-linker&tab=action_log' ) ) );
     } else {
         wp_send_json_error( array( 'message' => 'Invalid request.' ) );
     }

@@ -28,12 +28,12 @@ jQuery(document).ready(function($) {
     $('#add-to-first-5, #add-to-first-10').on('click', function() {
         var limit = $(this).is('#add-to-first-5') ? 5 : 10;
         $.post(ajaxurl, {
-            action: 'seolinks_bulk_create_links',
+            action: 'gulkl_bulk_create_links',
             limit: limit,
-            nonce: seolinks_ajax.nonce
+            nonce: gulkl_ajax.nonce
         }, function(response) {
             if (response.success) {
-                location.reload();
+                window.location.href = response.data.redirect_url;
             } else {
                 alert(response.data.message);
             }

@@ -1,3 +1,7 @@
+.gulkl-wrap .nav-tab-wrapper {
+    margin-bottom: 20px;
+}
+
 .gulkl-wrap .wp-list-table {
     border-radius: 4px;
     background-color: #fff;
@@ -14,12 +18,23 @@
 
 .gulkl-wrap .gulkl-opportunities ul {
     list-style: none;
-    margin: 0;
+    margin: 10px 0 0 0;
     padding: 0;
 }
 
 .gulkl-wrap .gulkl-opportunities li {
-    padding: 5px 0;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gulkl-wrap .opportunity-actions .button {
+    margin-left: 10px;
 }
 
 .gulkl-wrap .button-primary {
