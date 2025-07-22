@@ -69,6 +69,7 @@ add_action( 'wp_ajax_gulkl_bulk_create_external_links', 'gulkl_bulk_create_exter
 add_action( 'wp_ajax_gulkl_save_keyword', 'gulkl_save_keyword_callback' );
 add_action( 'wp_ajax_gulkl_scan_for_broken_links', 'gulkl_scan_for_broken_links_callback' );
 add_action( 'wp_ajax_gulkl_undo_action', 'gulkl_undo_action_callback' );
+add_action( 'wp_ajax_gulkl_undo_all_actions', 'gulkl_undo_all_actions_callback' );
 
 function gulkl_clear_cache() {
     delete_transient( 'gulkl_posts_post' );
@@ -547,7 +548,13 @@ function gulkl_process_action_queue() {
             array( 'id' => $action->id )
         );
 
-        wp_send_json_success( array( 'message' => 'Processed action ' . $action->id ) );
+        $message = sprintf(
+            'Added a link to "%s" on the page "%s" for the keyword "%s".',
+            get_the_title( $action->post_id ),
+            get_the_title( $action->opportunity_id ),
+            $action->keyword
+        );
+        wp_send_json_success( array( 'message' => $message ) );
     } else {
         wp_send_json_success( array( 'message' => '' ) );
     }
@@ -726,6 +733,41 @@ function gulkl_undo_action_callback() {
     }
 }
 
+function gulkl_undo_all_actions_callback() {
+    check_ajax_referer( 'gulkl-ajax-nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
+    }
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'gulkl_actions';
+    $actions = $wpdb->get_results( "SELECT * FROM $table_name WHERE status = 'completed'" );
+
+    foreach ( $actions as $action ) {
+        if ( $action->action === 'create_link' ) {
+            $post = get_post( $action->post_id );
+            $opportunity = get_post( $action->opportunity_id );
+            $keyword = gulkl_get_focus_keyword( $action->post_id );
+            $link = get_permalink( $action->post_id );
+
+            $new_content = str_replace( '<a href="' . esc_url( $link ) . '">' . esc_html( $keyword ) . '</a>', esc_html( $keyword ), $opportunity->post_content );
+            wp_update_post( array(
+                'ID' => $action->opportunity_id,
+                'post_content' => $new_content,
+            ) );
+        }
+    }
+
+    $wpdb->update(
+        $table_name,
+        array( 'status' => 'undone' ),
+        array( 'status' => 'completed' )
+    );
+
+    wp_send_json_success( array( 'message' => 'All actions undone.' ) );
+}
+
 function gulkl_settings_page() {
     if ( isset( $_POST['gulkl_save_settings'] ) ) {
         check_admin_referer( 'gulkl_settings' );
@@ -779,6 +821,7 @@ function gulkl_display_action_log_page() {
     ?>
     <div class="wrap">
         <h2>Action Log</h2>
+        <button class="button-secondary" id="undo-all-actions">Undo All</button>
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>

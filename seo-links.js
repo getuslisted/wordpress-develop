@@ -25,6 +25,19 @@ jQuery(document).ready(function($) {
         });
     });
 
+    $('#undo-all-actions').on('click', function() {
+        $.post(ajaxurl, {
+            action: 'gulkl_undo_all_actions',
+            nonce: gulkl_ajax.nonce
+        }, function(response) {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert(response.data.message);
+            }
+        });
+    });
+
     $('#add-to-first-5, #add-to-first-10').on('click', function() {
         var limit = $(this).is('#add-to-first-5') ? 5 : 10;
         $.post(ajaxurl, {
