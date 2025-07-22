@@ -90,28 +90,40 @@ jQuery(document).ready(function($) {
 
     $('#scan-for-broken-links').on('click', function() {
         var button = $(this);
-        button.text('Scanning...').prop('disabled', true);
+        var posts = button.data('posts');
+        var results = $('#broken-links-results');
+        var i = 0;
 
-        $.post(ajaxurl, {
-            action: 'seolinks_scan_for_broken_links',
-            nonce: seolinks_ajax.nonce
-        }, function(response) {
-            button.text('Scan for Broken Links').prop('disabled', false);
-            if (response.success) {
-                var results = $('#broken-links-results');
-                results.empty();
-                if (response.data.broken_links.length > 0) {
-                    var table = $('<table class="wp-list-table widefat fixed striped"><thead><tr><th>Post</th><th>Broken Link</th></tr></thead><tbody></tbody></table>');
-                    $.each(response.data.broken_links, function(index, item) {
-                        table.find('tbody').append('<tr><td>' + item.post_title + '</td><td>' + item.link + '</td></tr>');
-                    });
-                    results.append(table);
-                } else {
-                    results.append('<p>No broken links found.</p>');
-                }
-            } else {
-                alert(response.data.message);
+        button.text('Scanning...').prop('disabled', true);
+        results.empty().append('<p>Scanning...</p>');
+
+        function scan_next_post() {
+            if (i >= posts.length) {
+                button.text('Scan for Broken Links').prop('disabled', false);
+                results.find('p').text('Scan complete.');
+                return;
             }
-        });
+
+            $.post(ajaxurl, {
+                action: 'gulkl_scan_for_broken_links',
+                post_id: posts[i],
+                nonce: gulkl_ajax.nonce
+            }, function(response) {
+                if (response.success) {
+                    if (response.data.broken_links.length > 0) {
+                        if (results.find('table').length === 0) {
+                            results.empty().append('<table class="wp-list-table widefat fixed striped"><thead><tr><th>Post</th><th>Broken Link</th></tr></thead><tbody></tbody></table>');
+                        }
+                        $.each(response.data.broken_links, function(index, item) {
+                            results.find('tbody').append('<tr><td>' + item.post_title + '</td><td>' + item.link + '</td></tr>');
+                        });
+                    }
+                }
+                i++;
+                scan_next_post();
+            });
+        }
+
+        scan_next_post();
     });
 });

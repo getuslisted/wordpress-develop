@@ -612,23 +612,26 @@ function gulkl_scan_for_broken_links_callback() {
         wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
     }
 
-    $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );
+    $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+    if ( ! $post_id ) {
+        wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+    }
+
+    $post = get_post( $post_id );
     $broken_links = array();
 
-    foreach ( $posts as $post ) {
-        $content = $post->post_content;
-        preg_match_all( '/<a\s[^>]*href=([\"\']??)([^\" >]*?)\\1[^>]*>(.*)<\/a>/siU', $content, $matches );
+    $content = $post->post_content;
+    preg_match_all( '/<a\s[^>]*href=([\"\']??)([^\" >]*?)\\1[^>]*>(.*)<\/a>/siU', $content, $matches );
 
-        if ( ! empty( $matches[2] ) ) {
-            foreach ( $matches[2] as $link ) {
-                $response = wp_remote_head( $link, array( 'timeout' => 5 ) );
-                if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) >= 400 ) {
-                    $broken_links[] = array(
-                        'post_id' => $post->ID,
-                        'post_title' => $post->post_title,
-                        'link' => $link,
-                    );
-                }
+    if ( ! empty( $matches[2] ) ) {
+        foreach ( $matches[2] as $link ) {
+            $response = wp_remote_head( $link, array( 'timeout' => 5 ) );
+            if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) >= 400 ) {
+                $broken_links[] = array(
+                    'post_id' => $post->ID,
+                    'post_title' => $post->post_title,
+                    'link' => $link,
+                );
             }
         }
     }
@@ -637,10 +640,11 @@ function gulkl_scan_for_broken_links_callback() {
 }
 
 function gulkl_display_broken_links_page() {
+    $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1, 'fields' => 'ids' ) );
     ?>
     <div class="wrap">
         <h2>Broken Links</h2>
-        <button class="button-primary" id="scan-for-broken-links">Scan for Broken Links</button>
+        <button class="button-primary" id="scan-for-broken-links" data-posts="<?php echo esc_attr( json_encode( $posts ) ); ?>">Scan for Broken Links</button>
         <div id="broken-links-results"></div>
     </div>
     <?php
