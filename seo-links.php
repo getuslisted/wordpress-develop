@@ -1,9 +1,10 @@
 <?php
 /**
- * Plugin Name: SEO Links
+ * Plugin Name: Get Us Listed Keyword Linker
  * Description: A plugin to manage internal and external links for SEO.
  * Version: 1.0
- * Author: Jules
+ * Author: Get Us Listed LLC, Heath Harris
+ * Author URI: https://www.getuslisted.com/
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -38,6 +39,7 @@ function seolinks_enqueue_scripts( $hook ) {
     }
     wp_enqueue_style( 'seo-links-css', plugins_url( 'seo-links.css', __FILE__ ), array(), '1.0' );
     wp_enqueue_script( 'seo-links-js', plugins_url( 'seo-links.js', __FILE__ ), array( 'jquery' ), '1.0', true );
+    wp_localize_script( 'seo-links-js', 'seolinks_ajax', array( 'nonce' => wp_create_nonce( 'seolinks-ajax-nonce' ) ) );
 }
 add_action( 'admin_enqueue_scripts', 'seolinks_enqueue_scripts' );
 
@@ -112,6 +114,7 @@ function seolinks_admin_page() {
         <hr>
         <h2>External Links</h2>
         <form method="post" action="">
+            <?php wp_nonce_field( 'seolinks_external_link' ); ?>
             <input type="text" name="keyword" placeholder="Keyword">
             <input type="text" name="url" placeholder="URL">
             <input type="submit" name="add_external_link" class="button-primary" value="Add Link">
@@ -122,6 +125,7 @@ function seolinks_admin_page() {
 
 function seolinks_handle_external_link_form() {
     if ( isset( $_POST['add_external_link'] ) ) {
+        check_admin_referer( 'seolinks_external_link' );
         $keyword = sanitize_text_field( $_POST['keyword'] );
         $url = esc_url_raw( $_POST['url'] );
 
@@ -164,6 +168,12 @@ function seolinks_update_json_on_new_post( $post_id, $post ) {
 add_action( 'wp_insert_post', 'seolinks_update_json_on_new_post', 10, 2 );
 
 function seolinks_create_link_callback() {
+    check_ajax_referer( 'seolinks-ajax-nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
+    }
+
     $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
     $opportunity_id = isset( $_POST['opportunity_id'] ) ? intval( $_POST['opportunity_id'] ) : 0;
 
@@ -190,6 +200,12 @@ function seolinks_create_link_callback() {
 }
 
 function seolinks_dismiss_link_callback() {
+    check_ajax_referer( 'seolinks-ajax-nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
+    }
+
     $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
     $opportunity_id = isset( $_POST['opportunity_id'] ) ? intval( $_POST['opportunity_id'] ) : 0;
 
@@ -218,6 +234,12 @@ function seolinks_dismiss_link_callback() {
 }
 
 function seolinks_bulk_create_links_callback() {
+    check_ajax_referer( 'seolinks-ajax-nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
+    }
+
     $limit = isset( $_POST['limit'] ) ? intval( $_POST['limit'] ) : 0;
     if ( $limit > 0 ) {
         $posts = get_posts( array( 'post_type' => array( 'post', 'page' ), 'numberposts' => -1 ) );

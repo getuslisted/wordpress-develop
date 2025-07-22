@@ -14,7 +14,8 @@ jQuery(document).ready(function($) {
         $.post(ajaxurl, {
             action: action,
             post_id: post_id,
-            opportunity_id: opportunity_id
+            opportunity_id: opportunity_id,
+            nonce: seolinks_ajax.nonce
         }, function(response) {
             if (response.success) {
                 li.fadeOut();
@@ -28,7 +29,8 @@ jQuery(document).ready(function($) {
         var limit = $(this).is('#add-to-first-5') ? 5 : 10;
         $.post(ajaxurl, {
             action: 'seolinks_bulk_create_links',
-            limit: limit
+            limit: limit,
+            nonce: seolinks_ajax.nonce
         }, function(response) {
             if (response.success) {
                 location.reload();
