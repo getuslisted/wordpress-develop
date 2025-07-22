@@ -1,7 +1,7 @@
 jQuery(document).ready(function($) {
     $('.gulkl-toggle-opportunities').on('click', function(e) {
         e.preventDefault();
-        $(this).next('.gulkl-opportunities').slideToggle();
+        $(this).closest('td').find('.gulkl-opportunities').slideToggle();
     });
 
     $('.button-primary, .button-secondary').on('click', function() {
@@ -9,13 +9,13 @@ jQuery(document).ready(function($) {
         var li = button.closest('li');
         var post_id = li.data('post-id');
         var opportunity_id = li.data('opportunity-id');
-        var action = button.hasClass('button-primary') ? 'seolinks_create_link' : 'seolinks_dismiss_link';
+        var action = button.hasClass('button-primary') ? 'gulkl_create_link' : 'gulkl_dismiss_link';
 
         $.post(ajaxurl, {
             action: action,
             post_id: post_id,
             opportunity_id: opportunity_id,
-            nonce: seolinks_ajax.nonce
+            nonce: gulkl_ajax.nonce
         }, function(response) {
             if (response.success) {
                 li.fadeOut();
@@ -54,12 +54,12 @@ jQuery(document).ready(function($) {
         });
 
         $.post(ajaxurl, {
-            action: 'seolinks_bulk_create_external_links',
+            action: 'gulkl_bulk_create_external_links',
             keyword: $('input[name="keyword"]').val(),
             url: $('input[name="url"]').val(),
             limit: limit,
             opportunity_ids: opportunity_ids,
-            nonce: seolinks_ajax.nonce
+            nonce: gulkl_ajax.nonce
         }, function(response) {
             if (response.success) {
                 location.reload();

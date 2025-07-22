@@ -135,48 +135,6 @@ function gulkl_admin_page() {
     <?php
 }
 
-function gulkl_log_404_errors() {
-    if ( is_404() ) {
-        $errors = get_option( 'gulkl_404_errors', array() );
-        $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        if ( ! isset( $errors[ $url ] ) ) {
-            $errors[ $url ] = 0;
-        }
-        $errors[ $url ]++;
-        update_option( 'gulkl_404_errors', $errors );
-    }
-}
-add_action( 'template_redirect', 'gulkl_log_404_errors' );
-
-function gulkl_display_404_errors_page() {
-    $errors = get_option( 'gulkl_404_errors', array() );
-    ?>
-    <div class="wrap">
-        <h2>404 Errors</h2>
-        <?php if ( ! empty( $errors ) ) : ?>
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th>URL</th>
-                        <th>Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ( $errors as $url => $count ) : ?>
-                        <tr>
-                            <td><?php echo esc_html( $url ); ?></td>
-                            <td><?php echo esc_html( $count ); ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php else : ?>
-            <p>No 404 errors found.</p>
-        <?php endif; ?>
-    </div>
-    <?php
-}
-
 function gulkl_display_post_type_table( $post_type ) {
     $posts = get_transient( 'gulkl_posts_' . $post_type );
     if ( false === $posts ) {
@@ -296,6 +254,7 @@ function gulkl_display_same_keyword_table() {
                 <thead>
                     <tr>
                         <th>Title</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -353,6 +312,48 @@ function gulkl_display_no_keyword_table() {
     } else {
         echo '<p>No posts or pages with no keyword found.</p>';
     }
+}
+
+function gulkl_log_404_errors() {
+    if ( is_404() ) {
+        $errors = get_option( 'gulkl_404_errors', array() );
+        $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+        if ( ! isset( $errors[ $url ] ) ) {
+            $errors[ $url ] = 0;
+        }
+        $errors[ $url ]++;
+        update_option( 'gulkl_404_errors', $errors );
+    }
+}
+add_action( 'template_redirect', 'gulkl_log_404_errors' );
+
+function gulkl_display_404_errors_page() {
+    $errors = get_option( 'gulkl_404_errors', array() );
+    ?>
+    <div class="wrap">
+        <h2>404 Errors</h2>
+        <?php if ( ! empty( $errors ) ) : ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th>URL</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $errors as $url => $count ) : ?>
+                        <tr>
+                            <td><?php echo esc_html( $url ); ?></td>
+                            <td><?php echo esc_html( $count ); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else : ?>
+            <p>No 404 errors found.</p>
+        <?php endif; ?>
+    </div>
+    <?php
 }
 
 function gulkl_display_external_links_page() {
@@ -454,19 +455,6 @@ add_action( 'admin_init', 'gulkl_export_csv' );
 
 function gulkl_update_json_on_new_post( $post_id, $post ) {
     if ( $post->post_status === 'publish' ) {
-        $upload_dir = wp_upload_dir();
-        $json_file = $upload_dir['basedir'] . '/seo-links-data.json';
-        $data = json_decode( file_get_contents( $json_file ), true );
-
-        $new_post_data = array(
-            'id' => $post_id,
-            'title' => $post->post_title,
-            'keyword' => gulkl_get_focus_keyword( $post->ID ),
-        );
-
-        $data[] = $new_post_data;
-        file_put_contents( $json_file, json_encode( $data ) );
-
         // Add admin notification.
         add_action( 'admin_notices', function() use ( $post ) {
             ?>
@@ -509,87 +497,6 @@ function gulkl_create_link_callback() {
     } else {
         wp_send_json_error( array( 'message' => 'Invalid request.' ) );
     }
-}
-
-function gulkl_undo_action_callback() {
-    check_ajax_referer( 'gulkl-ajax-nonce', 'nonce' );
-
-    if ( ! current_user_can( 'manage_options' ) ) {
-        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
-    }
-
-    $action_id = isset( $_POST['action_id'] ) ? intval( $_POST['action_id'] ) : 0;
-    if ( ! $action_id ) {
-        wp_send_json_error( array( 'message' => 'Invalid request.' ) );
-    }
-
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'gulkl_actions';
-    $action = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $action_id ) );
-
-    if ( $action ) {
-        if ( $action->action === 'create_link' ) {
-            $post = get_post( $action->post_id );
-            $opportunity = get_post( $action->opportunity_id );
-            $keyword = gulkl_get_focus_keyword( $action->post_id );
-            $link = get_permalink( $action->post_id );
-
-            $new_content = str_replace( '<a href="' . esc_url( $link ) . '">' . esc_html( $keyword ) . '</a>', esc_html( $keyword ), $opportunity->post_content );
-            wp_update_post( array(
-                'ID' => $action->opportunity_id,
-                'post_content' => $new_content,
-            ) );
-        }
-
-        $wpdb->update(
-            $table_name,
-            array( 'status' => 'undone' ),
-            array( 'id' => $action_id )
-        );
-
-        wp_send_json_success( array( 'message' => 'Action undone.' ) );
-    } else {
-        wp_send_json_error( array( 'message' => 'Action not found.' ) );
-    }
-}
-
-function gulkl_display_action_log_page() {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'gulkl_actions';
-    $actions = $wpdb->get_results( "SELECT * FROM $table_name ORDER BY id DESC" );
-    ?>
-    <div class="wrap">
-        <h2>Action Log</h2>
-        <table class="wp-list-table widefat fixed striped">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Action</th>
-                    <th>Post</th>
-                    <th>Opportunity</th>
-                    <th>Status</th>
-                    <th>Undo</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ( $actions as $action ) : ?>
-                    <tr>
-                        <td><?php echo esc_html( $action->id ); ?></td>
-                        <td><?php echo esc_html( $action->action ); ?></td>
-                        <td><a href="<?php echo get_edit_post_link( $action->post_id ); ?>"><?php echo esc_html( get_the_title( $action->post_id ) ); ?></a></td>
-                        <td><a href="<?php echo get_edit_post_link( $action->opportunity_id ); ?>"><?php echo esc_html( get_the_title( $action->opportunity_id ) ); ?></a></td>
-                        <td><?php echo esc_html( $action->status ); ?></td>
-                        <td>
-                            <?php if ( $action->status === 'completed' ) : ?>
-                                <button class="button-secondary undo-action" data-action-id="<?php echo esc_attr( $action->id ); ?>">Undo</button>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-    <?php
 }
 
 function gulkl_process_action_queue() {
@@ -748,6 +655,87 @@ function gulkl_bulk_create_external_links_callback() {
     } else {
         wp_send_json_error( array( 'message' => 'Invalid request.' ) );
     }
+}
+
+function gulkl_undo_action_callback() {
+    check_ajax_referer( 'gulkl-ajax-nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
+    }
+
+    $action_id = isset( $_POST['action_id'] ) ? intval( $_POST['action_id'] ) : 0;
+    if ( ! $action_id ) {
+        wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+    }
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'gulkl_actions';
+    $action = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $action_id ) );
+
+    if ( $action ) {
+        if ( $action->action === 'create_link' ) {
+            $post = get_post( $action->post_id );
+            $opportunity = get_post( $action->opportunity_id );
+            $keyword = gulkl_get_focus_keyword( $action->post_id );
+            $link = get_permalink( $action->post_id );
+
+            $new_content = str_replace( '<a href="' . esc_url( $link ) . '">' . esc_html( $keyword ) . '</a>', esc_html( $keyword ), $opportunity->post_content );
+            wp_update_post( array(
+                'ID' => $action->opportunity_id,
+                'post_content' => $new_content,
+            ) );
+        }
+
+        $wpdb->update(
+            $table_name,
+            array( 'status' => 'undone' ),
+            array( 'id' => $action_id )
+        );
+
+        wp_send_json_success( array( 'message' => 'Action undone.' ) );
+    } else {
+        wp_send_json_error( array( 'message' => 'Action not found.' ) );
+    }
+}
+
+function gulkl_display_action_log_page() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'gulkl_actions';
+    $actions = $wpdb->get_results( "SELECT * FROM $table_name ORDER BY id DESC" );
+    ?>
+    <div class="wrap">
+        <h2>Action Log</h2>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Action</th>
+                    <th>Post</th>
+                    <th>Opportunity</th>
+                    <th>Status</th>
+                    <th>Undo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ( $actions as $action ) : ?>
+                    <tr>
+                        <td><?php echo esc_html( $action->id ); ?></td>
+                        <td><?php echo esc_html( $action->action ); ?></td>
+                        <td><a href="<?php echo get_edit_post_link( $action->post_id ); ?>"><?php echo esc_html( get_the_title( $action->post_id ) ); ?></a></td>
+                        <td><a href="<?php echo get_edit_post_link( $action->opportunity_id ); ?>"><?php echo esc_html( get_the_title( $action->opportunity_id ) ); ?></a></td>
+                        <td><?php echo esc_html( $action->status ); ?></td>
+                        <td>
+                            <?php if ( $action->status === 'completed' ) : ?>
+                                <button class="button-secondary undo-action" data-action-id="<?php echo esc_attr( $action->id ); ?>">Undo</button>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php
 }
 
 function gulkl_scan_for_broken_links_callback() {
