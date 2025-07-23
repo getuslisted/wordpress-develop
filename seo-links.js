@@ -23,8 +23,24 @@ jQuery(document).ready(function($) {
         var span = row.find('span');
         if (row.hasClass('active')) {
             span.text(span.text().replace('❌', '✅'));
+            var post_id = row.data('post-id');
+            var opportunity_id = row.data('opportunity-id');
+            $.post(ajaxurl, {
+                action: 'gulkl_create_link',
+                post_id: post_id,
+                opportunity_id: opportunity_id,
+                nonce: gulkl_ajax.nonce
+            });
         } else {
             span.text(span.text().replace('✅', '❌'));
+            var post_id = row.data('post-id');
+            var opportunity_id = row.data('opportunity-id');
+            $.post(ajaxurl, {
+                action: 'gulkl_dismiss_link',
+                post_id: post_id,
+                opportunity_id: opportunity_id,
+                nonce: gulkl_ajax.nonce
+            });
         }
     }
 
