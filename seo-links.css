@@ -1,105 +1,237 @@
-.gulkl-wrap .nav-tab-wrapper {
-    margin-bottom: 20px;
-}
-
-.gulkl-wrap .nav-tab {
-    background-color: #f5f5f5;
-    border-radius: 4px 4px 0 0;
-    border: 1px solid #e5e5e5;
-    border-bottom: none;
-    padding: 10px 20px;
-    font-size: 16px;
-    font-weight: 600;
-    color: #333;
-}
-
-.gulkl-wrap .nav-tab-active {
-    background-color: #fff;
-    border-bottom: 1px solid #fff;
-}
-
-.gulkl-wrap .gulkl-row {
-    background-color: #fff;
-    border: 1px solid #e5e5e5;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    padding: 20px;
-}
-
-.gulkl-wrap .gulkl-main-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.gulkl-wrap .gulkl-title-col {
-    flex-grow: 1;
-}
-
-.gulkl-wrap .gulkl-keyword-col,
-.gulkl-wrap .gulkl-density-col,
-.gulkl-wrap .gulkl-backlinks-col,
-.gulkl-wrap .gulkl-opportunities-col {
-    width: 150px;
-    text-align: center;
-}
-
-.gulkl-wrap .gulkl-opportunities {
-    padding: 10px;
-    background-color: #f9f9f9;
-    border: 1px solid #e5e5e5;
-    border-radius: 4px;
-    margin-top: 10px;
-}
-
-.gulkl-wrap .gulkl-opportunities ul {
-    list-style: none;
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(to bottom, #f6f6f6, #ffffff);
     margin: 0;
-    padding: 0;
+    padding: 20px;
+    color: #1d1d1f;
+    line-height: 1.5;
 }
-
-.gulkl-wrap .gulkl-opportunities li {
-    padding: 10px;
-    background-color: #fff;
-    border: 1px solid #e5e5e5;
-    border-radius: 4px;
-    margin-bottom: 10px;
+header {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(to bottom, #007aff, #0062cc);
+    color: white;
+    padding: 15px;
+    border-radius: 12px 12px 0 0;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+header i {
+    font-size: 28px;
+    margin-right: 12px;
+}
+header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+}
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    position: relative;
+}
+.tab-group {
+    position: relative;
+    margin-right: 20px;
+}
+.tab-header {
+    padding: 10px 20px;
+    cursor: pointer;
+    background: linear-gradient(to bottom, #ffffff, #f6f6f6);
+    border: 1px solid #d2d2d7;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+}
+.tab-header:hover {
+    background: linear-gradient(to bottom, #f2f2f2, #e5e5e5);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.tab-header i {
+    margin-right: 8px;
+}
+.sub-tabs {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border: 1px solid #d2d2d7;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10;
+    min-width: 200px;
+    padding: 10px 0;
+}
+.tab-group:hover .sub-tabs {
+    display: block;
+}
+.sub-tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    display: flex;
+    align-items: center;
+}
+.sub-tab:hover {
+    background: #f2f2f2;
+}
+.sub-tab.active {
+    background: #007aff;
+    color: white;
+}
+.sub-tab i {
+    margin-right: 8px;
+}
+.buttons {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+.button {
+    padding: 10px 24px;
+    margin-right: 12px;
+    background: linear-gradient(to bottom, #34c759, #28a745);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.button:hover {
+    background: linear-gradient(to bottom, #2db84c, #218838);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+th, td {
+    padding: 14px;
+    text-align: left;
+    border-bottom: 1px solid #d2d2d7;
+}
+th {
+    background: linear-gradient(to bottom, #f2f2f2, #e5e5e5);
+    color: #1d1d1f;
+    cursor: pointer;
+    font-weight: 600;
+}
+th:hover {
+    background: linear-gradient(to bottom, #e5e5e5, #d8d8d8);
+}
+.title-cell {
+    position: relative;
+    font-weight: 500;
+}
+.title-cell:hover .actions {
+    display: block;
+}
+.actions {
+    display: none;
+    position: absolute;
+    background: white;
+    border: 1px solid #d2d2d7;
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10;
+    min-width: 120px;
+}
+.actions a {
+    display: block;
+    color: #007aff;
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+.actions a:hover {
+    background: #f2f2f2;
+}
+.expandable {
+    cursor: pointer;
+    background: #f6f6f6;
+    padding: 12px;
+    border-top: 1px solid #d2d2d7;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    transition: background 0.3s ease;
+    font-weight: 500;
 }
-
-.gulkl-wrap .gulkl-opportunities li.active {
-    background-color: #e8f5e9;
-    border-color: #c8e6c9;
+.expandable:hover {
+    background: #e5e5e5;
 }
-
-.gulkl-wrap .gulkl-opportunities li.inactive {
-    background-color: #ffebee;
-    border-color: #ffcdd2;
+.expandable i {
+    transition: transform 0.3s ease;
 }
-
-.gulkl-wrap .opportunity-actions .button-primary {
-    background-color: #4CAF50;
-    border-color: #4CAF50;
+.expandable.open i {
+    transform: rotate(180deg);
 }
-
-.gulkl-wrap .opportunity-actions .button-secondary {
-    background-color: #f44336;
-    border-color: #f44336;
-    color: #fff;
+.backlinks {
+    display: none;
+    padding: 12px;
+    background: #fafafa;
 }
-
-.gulkl-wrap .button-bar {
-    margin-bottom: 20px;
+.backlink-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-
-.gulkl-wrap .button-bar .button {
-    margin-right: 10px;
+.backlink-row.active {
+    background: linear-gradient(to right, #d4edda, #c3e6cb);
 }
-
-.gulkl-wrap h1 .dashicons {
-    font-size: 30px;
-    margin-right: 10px;
-    vertical-align: middle;
+.backlink-row.inactive {
+    background: linear-gradient(to right, #f8d7da, #f5c6cb);
+}
+.backlink-row span {
+    flex: 1;
+}
+.toggle {
+    cursor: pointer;
+    background: #d2d2d7;
+    border-radius: 20px;
+    width: 44px;
+    height: 24px;
+    position: relative;
+    transition: background 0.3s ease;
+}
+.toggle.active {
+    background: #34c759;
+}
+.toggle::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: left 0.3s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.toggle.active::before {
+    left: 22px;
+}
+.content {
+    display: none;
+}
+.content.active {
+    display: block;
 }
