@@ -1,4 +1,53 @@
 jQuery(document).ready(function($) {
+    // Tab switching
+    $('.sub-tab').on('click', function() {
+        var tab = $(this).data('tab');
+        $('.sub-tab').removeClass('active');
+        $(this).addClass('active');
+        $('.content').removeClass('active');
+        $('#' + tab).addClass('active');
+    });
+
+    // Expandable toggle
+    window.toggleExpand = function(element) {
+        $(element).toggleClass('open');
+        $(element).next('.backlinks').slideToggle();
+    }
+
+    // Row toggle
+    window.toggleRow = function(element) {
+        $(element).toggleClass('active');
+        var row = $(element).parent();
+        row.toggleClass('active');
+        row.toggleClass('inactive');
+        var span = row.find('span');
+        if (row.hasClass('active')) {
+            span.text(span.text().replace('❌', '✅'));
+        } else {
+            span.text(span.text().replace('✅', '❌'));
+        }
+    }
+
+    // Table sorting
+    const table = document.getElementById('sortable-table');
+    if (table) {
+        const headers = table.querySelectorAll('th');
+        headers.forEach(header => {
+            header.addEventListener('click', () => {
+                const sortKey = header.dataset.sort;
+                const rows = Array.from(table.tBodies[0].rows).filter(row => !row.querySelector('.expandable'));
+                const isAscending = header.classList.toggle('asc');
+                header.classList.toggle('desc', !isAscending);
+                rows.sort((a, b) => {
+                    const aVal = a.querySelector(`td:nth-child(${Array.from(headers).indexOf(header) + 1})`).textContent.trim();
+                    const bVal = b.querySelector(`td:nth-child(${Array.from(headers).indexOf(header) + 1})`).textContent.trim();
+                    return isAscending ? aVal.localeCompare(bVal, undefined, {numeric: true}) : bVal.localeCompare(aVal, undefined, {numeric: true});
+                });
+                rows.forEach(row => table.tBodies[0].appendChild(row));
+            });
+        });
+    }
+
     $('.gulkl-toggle-opportunities').on('click', function(e) {
         e.preventDefault();
         $(this).closest('.gulkl-main-row').next('.gulkl-opportunities').slideToggle();
@@ -25,21 +74,14 @@ jQuery(document).ready(function($) {
         });
     });
 
-    $('#undo-all-actions').on('click', function() {
-        $.post(ajaxurl, {
-            action: 'gulkl_undo_all_actions',
-            nonce: gulkl_ajax.nonce
-        }, function(response) {
-            if (response.success) {
-                location.reload();
-            } else {
-                alert(response.data.message);
-            }
-        });
-    });
+    $('#add-to-first-5, #add-to-first-10, #add-all').on('click', function() {
+        var limit = 0;
+        if ($(this).is('#add-to-first-5')) {
+            limit = 5;
+        } else if ($(this).is('#add-to-first-10')) {
+            limit = 10;
+        }
 
-    $('#add-to-first-5, #add-to-first-10').on('click', function() {
-        var limit = $(this).is('#add-to-first-5') ? 5 : 10;
         $.post(ajaxurl, {
             action: 'gulkl_bulk_create_links',
             limit: limit,
@@ -147,6 +189,37 @@ jQuery(document).ready(function($) {
         $.post(ajaxurl, {
             action: 'gulkl_undo_action',
             action_id: action_id,
+            nonce: gulkl_ajax.nonce
+        }, function(response) {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert(response.data.message);
+            }
+        });
+    });
+
+    $('#undo-all-actions').on('click', function() {
+        $.post(ajaxurl, {
+            action: 'gulkl_undo_all_actions',
+            nonce: gulkl_ajax.nonce
+        }, function(response) {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert(response.data.message);
+            }
+        });
+    });
+
+    $('.gulkl-remove-all-backlinks').on('click', function(e) {
+        e.preventDefault();
+        var button = $(this);
+        var post_id = button.data('post-id');
+
+        $.post(ajaxurl, {
+            action: 'gulkl_remove_all_internal_backlinks',
+            post_id: post_id,
             nonce: gulkl_ajax.nonce
         }, function(response) {
             if (response.success) {

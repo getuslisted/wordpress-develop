@@ -41,14 +41,6 @@ function gulkl_admin_menu() {
         'gulkl_admin_page',
         'dashicons-admin-links'
     );
-    add_submenu_page(
-        'get-us-listed-keyword-linker',
-        'Settings',
-        'Settings',
-        'manage_options',
-        'gulkl-settings',
-        'gulkl_settings_page'
-    );
 }
 add_action( 'admin_menu', 'gulkl_admin_menu' );
 
@@ -59,6 +51,7 @@ function gulkl_enqueue_scripts( $hook ) {
     wp_enqueue_style( 'gulkl-css', plugins_url( 'seo-links.css', __FILE__ ), array(), '1.0' );
     wp_enqueue_script( 'gulkl-js', plugins_url( 'seo-links.js', __FILE__ ), array( 'jquery' ), '1.0', true );
     wp_localize_script( 'gulkl-js', 'gulkl_ajax', array( 'nonce' => wp_create_nonce( 'gulkl-ajax-nonce' ) ) );
+    wp_enqueue_style( 'font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css' );
 }
 add_action( 'admin_enqueue_scripts', 'gulkl_enqueue_scripts' );
 
@@ -70,6 +63,7 @@ add_action( 'wp_ajax_gulkl_save_keyword', 'gulkl_save_keyword_callback' );
 add_action( 'wp_ajax_gulkl_scan_for_broken_links', 'gulkl_scan_for_broken_links_callback' );
 add_action( 'wp_ajax_gulkl_undo_action', 'gulkl_undo_action_callback' );
 add_action( 'wp_ajax_gulkl_undo_all_actions', 'gulkl_undo_all_actions_callback' );
+add_action( 'wp_ajax_gulkl_remove_all_internal_backlinks', 'gulkl_remove_all_internal_backlinks_callback' );
 
 function gulkl_clear_cache() {
     delete_transient( 'gulkl_posts_post' );
@@ -110,41 +104,80 @@ function gulkl_find_link_opportunities( $post_id, $keyword ) {
 function gulkl_admin_page() {
     ?>
     <div class="wrap gulkl-wrap">
-        <h1><span class="dashicons dashicons-admin-links"></span> Get Us Listed Keyword Linker</h1>
-        <h2 class="nav-tab-wrapper">
-            <a href="?page=get-us-listed-keyword-linker&tab=pages" class="nav-tab <?php echo ( ! isset( $_GET['tab'] ) || $_GET['tab'] === 'pages' ) ? 'nav-tab-active' : ''; ?>">Pages</a>
-            <a href="?page=get-us-listed-keyword-linker&tab=posts" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'posts' ) ? 'nav-tab-active' : ''; ?>">Posts</a>
-            <a href="?page=get-us-listed-keyword-linker&tab=same_keyword" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'same_keyword' ) ? 'nav-tab-active' : ''; ?>">Same Keyword</a>
-            <a href="?page=get-us-listed-keyword-linker&tab=no_keyword" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'no_keyword' ) ? 'nav-tab-active' : ''; ?>">No Keyword</a>
-            <a href="?page=get-us-listed-keyword-linker&tab=external_links" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'external_links' ) ? 'nav-tab-active' : ''; ?>">External Links</a>
-            <a href="?page=get-us-listed-keyword-linker&tab=broken_links" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'broken_links' ) ? 'nav-tab-active' : ''; ?>">Broken Links</a>
-            <a href="?page=get-us-listed-keyword-linker&tab=404_errors" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === '404_errors' ) ? 'nav-tab-active' : ''; ?>">404 Errors</a>
-            <a href="?page=get-us-listed-keyword-linker&tab=action_log" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'action_log' ) ? 'nav-tab-active' : ''; ?>">Action Log</a>
-            <a href="?page=get-us-listed-keyword-linker&tab=real_time_log" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'real_time_log' ) ? 'nav-tab-active' : ''; ?>">Real-Time Log</a>
-        </h2>
+        <header>
+            <i class="fas fa-link"></i>
+            <h1>Get Us Listed Keyword Linker</h1>
+        </header>
 
-        <?php
-        $tab = isset( $_GET['tab'] ) ? $_GET['tab'] : 'pages';
-        if ( $tab === 'pages' ) {
-            gulkl_display_post_type_table( 'page' );
-        } elseif ( $tab === 'posts' ) {
-            gulkl_display_post_type_table( 'post' );
-        } elseif ( $tab === 'same_keyword' ) {
-            gulkl_display_same_keyword_table();
-        } elseif ( $tab === 'no_keyword' ) {
-            gulkl_display_no_keyword_table();
-        } elseif ( $tab === 'external_links' ) {
-            gulkl_display_external_links_page();
-        } elseif ( $tab === 'broken_links' ) {
-            gulkl_display_broken_links_page();
-        } elseif ( $tab === '404_errors' ) {
-            gulkl_display_404_errors_page();
-        } elseif ( $tab === 'action_log' ) {
-            gulkl_display_action_log_page();
-        } elseif ( $tab === 'real_time_log' ) {
-            gulkl_display_real_time_log_page();
-        }
-        ?>
+        <div class="tabs">
+            <div class="tab-group">
+                <div class="tab-header"><i class="fas fa-file-alt"></i> Content</div>
+                <div class="sub-tabs">
+                    <div class="sub-tab active" data-tab="pages"><i class="fas fa-page"></i> Pages</div>
+                    <div class="sub-tab" data-tab="posts"><i class="fas fa-blog"></i> Posts</div>
+                </div>
+            </div>
+            <div class="tab-group">
+                <div class="tab-header"><i class="fas fa-key"></i> Keywords</div>
+                <div class="sub-tabs">
+                    <div class="sub-tab" data-tab="same-keyword"><i class="fas fa-equals"></i> Same Keyword</div>
+                    <div class="sub-tab" data-tab="no-keyword"><i class="fas fa-ban"></i> No Keyword</div>
+                </div>
+            </div>
+            <div class="tab-group">
+                <div class="tab-header"><i class="fas fa-link"></i> Links</div>
+                <div class="sub-tabs">
+                    <div class="sub-tab" data-tab="external-links"><i class="fas fa-external-link-alt"></i> External Links</div>
+                    <div class="sub-tab" data-tab="broken-links"><i class="fas fa-unlink"></i> Broken Links</div>
+                    <div class="sub-tab" data-tab="404-errors"><i class="fas fa-exclamation-triangle"></i> 404 Errors</div>
+                </div>
+            </div>
+            <div class="tab-group">
+                <div class="tab-header"><i class="fas fa-history"></i> Logs</div>
+                <div class="sub-tabs">
+                    <div class="sub-tab" data-tab="action-log"><i class="fas fa-clipboard-list"></i> Action Log</div>
+                    <div class="sub-tab" data-tab="real-time-log"><i class="fas fa-clock"></i> Real Time Log</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button class="button" id="add-to-first-5"><i class="fas fa-plus"></i> Add to First 5</button>
+            <button class="button" id="add-to-first-10"><i class="fas fa-plus"></i> Add to First 10</button>
+            <button class="button" id="add-all"><i class="fas fa-plus"></i> Add All</button>
+            <form method="post" action="" style="display:inline-block; float:right;">
+                <input type="hidden" name="gulkl_export_csv" value="pages">
+                <button class="button" type="submit"><i class="fas fa-file-export"></i> Export to CSV</button>
+            </form>
+        </div>
+
+        <div id="pages" class="content active">
+            <?php gulkl_display_post_type_table( 'page' ); ?>
+        </div>
+        <div id="posts" class="content">
+            <?php gulkl_display_post_type_table( 'post' ); ?>
+        </div>
+        <div id="same-keyword" class="content">
+            <?php gulkl_display_same_keyword_table(); ?>
+        </div>
+        <div id="no-keyword" class="content">
+            <?php gulkl_display_no_keyword_table(); ?>
+        </div>
+        <div id="external-links" class="content">
+            <?php gulkl_display_external_links_page(); ?>
+        </div>
+        <div id="broken-links" class="content">
+            <?php gulkl_display_broken_links_page(); ?>
+        </div>
+        <div id="404-errors" class="content">
+            <?php gulkl_display_404_errors_page(); ?>
+        </div>
+        <div id="action-log" class="content">
+            <?php gulkl_display_action_log_page(); ?>
+        </div>
+        <div id="real-time-log" class="content">
+            <?php gulkl_display_real_time_log_page(); ?>
+        </div>
     </div>
     <?php
 }
@@ -158,22 +191,13 @@ function gulkl_display_post_type_table( $post_type ) {
     } );
     if ( $posts ) {
         ?>
-        <div>
-            <button class="button-primary" id="add-to-first-5">Add to first 5</button>
-            <button class="button-primary" id="add-to-first-10">Add to first 10</button>
-            <form method="post" action="" style="display:inline-block; float:right;">
-                <input type="hidden" name="gulkl_export_csv" value="<?php echo esc_attr( $post_type ); ?>">
-                <input type="submit" class="button-primary" value="Export to CSV">
-            </form>
-        </div>
-        <table class="wp-list-table widefat fixed striped">
+        <table id="sortable-table">
             <thead>
                 <tr>
-                    <th>Title</th>
-                    <th>Keyword</th>
-                    <th>Keyword Density</th>
-                    <th>Backlinks</th>
-                    <th>Opportunities</th>
+                    <th data-sort="title">Title</th>
+                    <th data-sort="keyword">Keyword</th>
+                    <th data-sort="density">Keyword Density</th>
+                    <th data-sort="backlinks">Backlinks</th>
                 </tr>
             </thead>
             <tbody>
@@ -187,43 +211,35 @@ function gulkl_display_post_type_table( $post_type ) {
                     }
                     $keyword_density = gulkl_calculate_keyword_density( $post->post_content, $keyword );
                     ?>
-                    <div class="gulkl-row">
-                        <div class="gulkl-main-row">
-                            <div class="gulkl-title-col">
-                                <?php echo esc_html( $post->post_title ); ?>
-                                <div class="row-actions">
-                                    <a href="<?php echo get_edit_post_link( $post->ID ); ?>">Edit</a> |
-                                    <a href="<?php echo get_permalink( $post->ID ); ?>">View</a>
-                                </div>
+                    <tr>
+                        <td class="title-cell">
+                            <?php echo esc_html( $post->post_title ); ?>
+                            <div class="actions">
+                                <a href="<?php echo get_edit_post_link( $post->ID ); ?>"><i class="fas fa-edit"></i> Edit Page</a>
+                                <a href="<?php echo get_permalink( $post->ID ); ?>"><i class="fas fa-eye"></i> View Page</a>
+                                <a href="#" class="gulkl-remove-all-backlinks" data-post-id="<?php echo esc_attr( $post->ID ); ?>"><i class="fas fa-trash"></i> Remove All Internal Backlinks</a>
                             </div>
-                            <div class="gulkl-keyword-col"><?php echo esc_html( $keyword ); ?></div>
-                            <div class="gulkl-density-col">
-                                <?php echo esc_html( $keyword_density ); ?>%
-                                <span class="dashicons dashicons-editor-help" title="Keyword density is the percentage of times a keyword or phrase appears on a web page compared to the total number of words on the page."></span>
+                        </td>
+                        <td><?php echo esc_html( $keyword ); ?></td>
+                        <td><?php echo esc_html( $keyword_density ); ?>%</td>
+                        <td><?php echo esc_html( $backlinks ); ?></td>
+                    </tr>
+                    <tr>
+                        <td colspan="4">
+                            <div class="expandable" onclick="toggleExpand(this)">
+                                <?php echo count( $opportunities ); ?> Backlink Opportunities
+                                <i class="fas fa-angle-double-down"></i>
                             </div>
-                            <div class="gulkl-backlinks-col"><?php echo esc_html( $backlinks ); ?></div>
-                            <div class="gulkl-opportunities-col">
-                                <?php if ( ! empty( $opportunities ) ) : ?>
-                                    <a href="#" class="gulkl-toggle-opportunities"><span class="dashicons dashicons-plus"></span> Backlink Opportunities</a>
-                                <?php endif; ?>
+                            <div class="backlinks">
+                                <?php foreach ( $opportunities as $opportunity ) : ?>
+                                    <div class="backlink-row <?php echo ( strpos( $opportunity->post_content, get_permalink( $post->ID ) ) !== false ) ? 'active' : 'inactive'; ?>">
+                                        <span><?php echo ( strpos( $opportunity->post_content, get_permalink( $post->ID ) ) !== false ) ? '✅' : '❌'; ?> <?php echo esc_html( $opportunity->post_title ); ?></span>
+                                        <div class="toggle <?php echo ( strpos( $opportunity->post_content, get_permalink( $post->ID ) ) !== false ) ? 'active' : ''; ?>" onclick="toggleRow(this)"></div>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
-                        </div>
-                        <?php if ( ! empty( $opportunities ) ) : ?>
-                            <div class="gulkl-opportunities" style="display:none;">
-                                <ul>
-                                    <?php foreach ( $opportunities as $opportunity ) : ?>
-                                        <li data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-opportunity-id="<?php echo esc_attr( $opportunity->ID ); ?>" class="<?php echo ( strpos( $opportunity->post_content, get_permalink( $post->ID ) ) !== false ) ? 'active' : 'inactive'; ?>">
-                                            <?php echo esc_html( $opportunity->post_title ); ?>
-                                            <div class="opportunity-actions">
-                                                <button class="button-primary">Yes</button>
-                                                <button class="button-secondary">No</button>
-                                            </div>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                        <?php endif; ?>
-                    </div>
+                        </td>
+                    </tr>
                     <?php
                 }
                 ?>
@@ -881,6 +897,9 @@ function gulkl_scan_for_broken_links_callback() {
 
     if ( ! empty( $matches[2] ) ) {
         foreach ( $matches[2] as $link ) {
+            if ( strpos( $link, 'tel:' ) === 0 ) {
+                continue;
+            }
             $response = wp_remote_head( $link, array( 'timeout' => 5 ) );
             if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) >= 400 ) {
                 $broken_links[] = array(
@@ -904,4 +923,28 @@ function gulkl_display_broken_links_page() {
         <div id="broken-links-results"></div>
     </div>
     <?php
+}
+
+function gulkl_remove_all_internal_backlinks_callback() {
+    check_ajax_referer( 'gulkl-ajax-nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'You do not have permission to perform this action.' ) );
+    }
+
+    $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+    if ( ! $post_id ) {
+        wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+    }
+
+    $post = get_post( $post_id );
+    $content = $post->post_content;
+    $new_content = preg_replace( '/<a\s[^>]*href=([\"\']??)([^\" >]*?)\\1[^>]*>(' . preg_quote( get_the_title( $post_id ), '/' ) . ')<\/a>/siU', '$3', $content );
+
+    wp_update_post( array(
+        'ID' => $post_id,
+        'post_content' => $new_content,
+    ) );
+
+    wp_send_json_success( array( 'message' => 'All internal backlinks removed.' ) );
 }
