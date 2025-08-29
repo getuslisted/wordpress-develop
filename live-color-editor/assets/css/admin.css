@@ -1,0 +1,27 @@
+.lce-color-mapping-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.lce-color-inputs {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+.lce-color-inputs span {
+    margin: 0 10px;
+    font-size: 1.5em;
+    color: #666;
+}
+
+.lce-remove-row-button {
+    margin-left: 10px;
+}
+
+#lce-add-row-button {
+    margin-top: 10px;
+}
