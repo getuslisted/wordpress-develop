@@ -349,4 +349,105 @@ class Tests_LocalGamifiedDirectory extends WP_UnitTestCase {
                 $this->assertStringContainsString( 'Need help?', $html );
                 $this->assertStringContainsString( 'https://example.com/support', $html );
         }
+
+	/**
+	 * Custom point rules should adjust award amounts.
+	 */
+	public function test_gamification_honours_custom_point_rules() {
+		$gamification = self::$plugin->get_gamification();
+		$this->assertNotNull( $gamification );
+
+		update_option(
+			LGD_Admin::OPTION_GAMIFICATION_POINTS,
+			array(
+				'registration'       => 12,
+				'daily_login'        => 0,
+				'forum_topic'        => 3,
+				'forum_reply'        => 1,
+				'classified_publish' => 4,
+				'business_publish'   => 9,
+			)
+		);
+		update_option( LGD_Admin::OPTION_FORUM_DAILY_CAP, 4 );
+
+		$gamification->refresh_settings();
+
+		$user_id = self::factory()->user->create();
+
+		$gamification->handle_user_register( $user_id );
+		$this->assertSame( 12, $gamification->get_user_points( $user_id ) );
+
+		$gamification->handle_user_login( '', get_user_by( 'id', $user_id ) );
+		$this->assertSame( 12, $gamification->get_user_points( $user_id ) );
+
+		$gamification->handle_new_topic( 0, 0, array(), $user_id );
+		$gamification->handle_new_reply( 0, 0, 0, array(), $user_id );
+		$gamification->handle_new_reply( 0, 0, 0, array(), $user_id );
+		$this->assertSame( 16, $gamification->get_user_points( $user_id ) );
+
+		$classified_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'classified_listing',
+				'post_status' => 'publish',
+				'post_author' => $user_id,
+			)
+		);
+		$gamification->handle_classified_save( $classified_id, get_post( $classified_id ), false );
+		$this->assertSame( 20, $gamification->get_user_points( $user_id ) );
+
+		$business_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'business_listing',
+				'post_status' => 'publish',
+				'post_author' => $user_id,
+			)
+		);
+		$gamification->handle_business_save( $business_id, get_post( $business_id ), false );
+		$this->assertSame( 29, $gamification->get_user_points( $user_id ) );
+	}
+
+	/**
+	 * Sanitizing point rules should ignore unknown keys and normalise values.
+	 */
+	public function test_sanitize_points_rules_normalises_actions() {
+		$admin = self::$plugin->get_admin();
+		$this->assertNotNull( $admin );
+
+		$input  = array(
+			'registration' => '15',
+			'daily_login'  => '-3',
+			'unknown'      => '99',
+		);
+		$sanitised = $admin->sanitize_points_rules( $input );
+
+		$this->assertSame( 15, $sanitised['registration'] );
+		$this->assertSame( 3, $sanitised['daily_login'] );
+		$this->assertArrayNotHasKey( 'unknown', $sanitised );
+	}
+
+	/**
+	 * Sanitizing rank thresholds should fall back to defaults when empty.
+	 */
+	public function test_sanitize_rank_thresholds_falls_back_to_defaults() {
+		$admin = self::$plugin->get_admin();
+		$this->assertNotNull( $admin );
+
+		$defaults = self::$plugin->get_default_rank_thresholds();
+		$result   = $admin->sanitize_rank_thresholds( array( 'min' => array(), 'label' => array() ) );
+
+		$this->assertSame( $defaults, $result );
+
+		$custom = $admin->sanitize_rank_thresholds(
+			array(
+				'min'   => array( '800', '100' ),
+				'label' => array( 'Champion', 'Contributor' ),
+			)
+		);
+
+		$this->assertArrayHasKey( 800, $custom );
+		$this->assertSame( 'Champion', $custom[800] );
+		$this->assertArrayHasKey( 100, $custom );
+		$this->assertSame( 'Contributor', $custom[100] );
+	}
+
 }

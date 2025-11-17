@@ -449,11 +449,97 @@ if ( ! class_exists( 'Local_Gamified_Directory' ) ) {
                         update_option( 'lgd_' . $key, $value );
                 }
 
-        /**
-         * Retrieve contextual help definitions keyed by form element.
-         *
-         * @return array
-         */
+                /**
+                 * Retrieve point-awarding actions for configuration screens.
+                 *
+                 * @return array
+                 */
+                public function get_point_actions() {
+                        $actions = array(
+                                'registration'       => array(
+                                        'label'       => __( 'Registration bonus', 'local-gamified-directory' ),
+                                        'description' => __( 'Awarded when a new user creates an account.', 'local-gamified-directory' ),
+                                        'default'     => 50,
+                                ),
+                                'daily_login'        => array(
+                                        'label'       => __( 'Daily login', 'local-gamified-directory' ),
+                                        'description' => __( 'Granted the first time a user logs in each day.', 'local-gamified-directory' ),
+                                        'default'     => 5,
+                                ),
+                                'forum_topic'        => array(
+                                        'label'       => __( 'New forum topic', 'local-gamified-directory' ),
+                                        'description' => __( 'Points for creating a new discussion topic in the forums.', 'local-gamified-directory' ),
+                                        'default'     => 5,
+                                ),
+                                'forum_reply'        => array(
+                                        'label'       => __( 'Forum reply', 'local-gamified-directory' ),
+                                        'description' => __( 'Granted when a user replies to an existing topic.', 'local-gamified-directory' ),
+                                        'default'     => 2,
+                                ),
+                                'classified_publish' => array(
+                                        'label'       => __( 'Publish classified listing', 'local-gamified-directory' ),
+                                        'description' => __( 'Awarded when a new classified listing is approved.', 'local-gamified-directory' ),
+                                        'default'     => 5,
+                                ),
+                                'business_publish'   => array(
+                                        'label'       => __( 'Publish business listing', 'local-gamified-directory' ),
+                                        'description' => __( 'Granted when a business profile goes live.', 'local-gamified-directory' ),
+                                        'default'     => 10,
+                                ),
+                        );
+
+                        /**
+                         * Filter the list of configurable point actions.
+                         *
+                         * @since 0.1.0
+                         *
+                         * @param array $actions Action configuration data.
+                         */
+                        return apply_filters( 'lgd_point_actions', $actions );
+                }
+
+                /**
+                 * Retrieve the default point values for each action.
+                 *
+                 * @return array
+                 */
+                public function get_default_points_rules() {
+                        $defaults = array();
+
+                        foreach ( $this->get_point_actions() as $key => $action ) {
+                                $defaults[ $key ] = isset( $action['default'] ) ? (int) $action['default'] : 0;
+                        }
+
+                        return $defaults;
+                }
+
+                /**
+                 * Retrieve the default rank thresholds used for badges.
+                 *
+                 * @return array
+                 */
+                public function get_default_rank_thresholds() {
+                        $thresholds = array(
+                                1000 => 'Expert',
+                                500  => 'Intermediate',
+                                0    => 'Beginner',
+                        );
+
+                        /**
+                         * Filter the default rank thresholds.
+                         *
+                         * @since 0.1.0
+                         *
+                         * @param array $thresholds Rank thresholds keyed by minimum point requirement.
+                         */
+                        return apply_filters( 'lgd_default_rank_thresholds', $thresholds );
+                }
+
+		/**
+		 * Retrieve contextual help definitions keyed by form element.
+		 *
+		 * @return array
+		 */
         public function get_help_contexts() {
                 $contexts = array(
                         'business_claim_listing' => array(

@@ -14,8 +14,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class LGD_Gamification {
 
-	const TABLE_POINTS = 'lgd_user_points';
-	const TABLE_LOG    = 'lgd_points_log';
+        const TABLE_POINTS           = 'lgd_user_points';
+        const TABLE_LOG              = 'lgd_points_log';
+        const DEFAULT_FORUM_DAILY_CAP = 20;
 
 	/**
 	 * Plugin instance.
@@ -43,7 +44,21 @@ class LGD_Gamification {
 	 *
 	 * @var int
 	 */
-	private $forum_daily_cap = 20;
+        private $forum_daily_cap = self::DEFAULT_FORUM_DAILY_CAP;
+
+        /**
+         * Configured point rules keyed by action.
+         *
+         * @var array
+         */
+        private $points_rules = array();
+
+        /**
+         * Default point rules for known actions.
+         *
+         * @var array
+         */
+        private $default_points_rules = array();
 
 	/**
 	 * Rank thresholds keyed by minimum point totals.
@@ -52,42 +67,81 @@ class LGD_Gamification {
 	 *
 	 * @var array
 	 */
-	private $rank_thresholds = array(
-	        1000 => 'Expert',
-	        500  => 'Intermediate',
-	        0    => 'Beginner',
-	);
+        private $rank_thresholds = array(
+                1000 => 'Expert',
+                500  => 'Intermediate',
+                0    => 'Beginner',
+        );
 
 	/**
 	 * Constructor.
 	 *
 	 * @param Local_Gamified_Directory $plugin Main plugin instance.
 	 */
-	public function __construct( Local_Gamified_Directory $plugin ) {
-	        global $wpdb;
+        public function __construct( Local_Gamified_Directory $plugin ) {
+                global $wpdb;
 
-	        $this->plugin       = $plugin;
-	        $this->points_table = $wpdb->prefix . self::TABLE_POINTS;
-	        $this->log_table    = $wpdb->prefix . self::TABLE_LOG;
+                $this->plugin       = $plugin;
+                $this->points_table = $wpdb->prefix . self::TABLE_POINTS;
+                $this->log_table    = $wpdb->prefix . self::TABLE_LOG;
 
-	        $this->rank_thresholds = (array) apply_filters( 'lgd_rank_thresholds', $this->rank_thresholds );
-	        uksort(
-	                $this->rank_thresholds,
-	                static function( $a, $b ) {
-	                        return (int) $b <=> (int) $a;
-	                }
-	        );
+                $this->refresh_settings();
 
-	        add_action( 'init', array( $this, 'register_shortcodes' ) );
-	        add_action( 'user_register', array( $this, 'handle_user_register' ) );
-	        add_action( 'wp_login', array( $this, 'handle_user_login' ), 10, 2 );
-	        add_action( 'bbp_new_topic', array( $this, 'handle_new_topic' ), 10, 4 );
-	        add_action( 'bbp_new_reply', array( $this, 'handle_new_reply' ), 10, 5 );
-	        add_action( 'save_post_classified_listing', array( $this, 'handle_classified_save' ), 10, 3 );
-	        add_action( 'save_post_business_listing', array( $this, 'handle_business_save' ), 10, 3 );
-	        add_action( 'admin_menu', array( $this, 'register_admin_page' ) );
-	        add_action( 'admin_init', array( $this, 'handle_admin_adjustment' ) );
-	}
+                foreach ( array( LGD_Admin::OPTION_GAMIFICATION_POINTS, LGD_Admin::OPTION_FORUM_DAILY_CAP, LGD_Admin::OPTION_RANK_RULES ) as $option ) {
+                        add_action( 'update_option_' . $option, array( $this, 'refresh_settings' ), 10, 0 );
+                        add_action( 'add_option_' . $option, array( $this, 'refresh_settings' ), 10, 0 );
+                }
+
+                add_action( 'init', array( $this, 'register_shortcodes' ) );
+                add_action( 'user_register', array( $this, 'handle_user_register' ) );
+                add_action( 'wp_login', array( $this, 'handle_user_login' ), 10, 2 );
+                add_action( 'bbp_new_topic', array( $this, 'handle_new_topic' ), 10, 4 );
+                add_action( 'bbp_new_reply', array( $this, 'handle_new_reply' ), 10, 5 );
+                add_action( 'save_post_classified_listing', array( $this, 'handle_classified_save' ), 10, 3 );
+                add_action( 'save_post_business_listing', array( $this, 'handle_business_save' ), 10, 3 );
+                add_action( 'admin_menu', array( $this, 'register_admin_page' ) );
+                add_action( 'admin_init', array( $this, 'handle_admin_adjustment' ) );
+        }
+
+        /**
+         * Refresh cached configuration from stored options.
+         */
+        public function refresh_settings() {
+                $this->default_points_rules = $this->plugin->get_default_points_rules();
+
+                $stored_rules = get_option( LGD_Admin::OPTION_GAMIFICATION_POINTS, array() );
+                if ( ! is_array( $stored_rules ) ) {
+                        $stored_rules = array();
+                }
+
+                $rules = array();
+                foreach ( $this->default_points_rules as $key => $default ) {
+                        $rules[ $key ] = isset( $stored_rules[ $key ] ) ? max( 0, (int) $stored_rules[ $key ] ) : (int) $default;
+                }
+
+                $this->points_rules    = $rules;
+                $this->forum_daily_cap = max( 0, (int) get_option( LGD_Admin::OPTION_FORUM_DAILY_CAP, self::DEFAULT_FORUM_DAILY_CAP ) );
+
+                $rank_rules = get_option( LGD_Admin::OPTION_RANK_RULES, array() );
+                if ( ! is_array( $rank_rules ) || empty( $rank_rules ) ) {
+                        $rank_rules = $this->plugin->get_default_rank_thresholds();
+                }
+
+                $normalized = array();
+                foreach ( $rank_rules as $threshold => $label ) {
+                        $normalized[ (int) $threshold ] = (string) $label;
+                }
+
+                $normalized           = (array) apply_filters( 'lgd_rank_thresholds', $normalized );
+                $this->rank_thresholds = $normalized;
+
+                uksort(
+                        $this->rank_thresholds,
+                        static function ( $a, $b ) {
+                                return (int) $b <=> (int) $a;
+                        }
+                );
+        }
 
 	/**
 	 * Ensure required tables exist on activation.
@@ -137,9 +191,13 @@ class LGD_Gamification {
 	 *
 	 * @param int $user_id User ID.
 	 */
-	public function handle_user_register( $user_id ) {
-	        $this->add_points( $user_id, 50, 'registration' );
-	}
+        public function handle_user_register( $user_id ) {
+                $amount = $this->get_points_rule( 'registration' );
+
+                if ( $amount > 0 ) {
+                        $this->add_points( $user_id, $amount, 'registration' );
+                }
+        }
 
 	/**
 	 * Award login points once per day.
@@ -155,9 +213,14 @@ class LGD_Gamification {
 	                return;
 	        }
 
-	        update_user_meta( $user->ID, '_lgd_last_login_points', $today );
-	        $this->add_points( $user->ID, 5, 'daily_login' );
-	}
+                update_user_meta( $user->ID, '_lgd_last_login_points', $today );
+
+                $amount = $this->get_points_rule( 'daily_login' );
+
+                if ( $amount > 0 ) {
+                        $this->add_points( $user->ID, $amount, 'daily_login' );
+                }
+        }
 
 	/**
 	 * Award points for forum topics.
@@ -169,8 +232,12 @@ class LGD_Gamification {
 	                return;
 	        }
 
-	        $this->maybe_award_forum_points( $user_id, 5 );
-	}
+                $amount = $this->get_points_rule( 'forum_topic' );
+
+                if ( $amount > 0 ) {
+                        $this->maybe_award_forum_points( $user_id, $amount, 'forum_topic' );
+                }
+        }
 
 	/**
 	 * Award points for forum replies.
@@ -182,8 +249,12 @@ class LGD_Gamification {
 	                return;
 	        }
 
-	        $this->maybe_award_forum_points( $user_id, 2 );
-	}
+                $amount = $this->get_points_rule( 'forum_reply' );
+
+                if ( $amount > 0 ) {
+                        $this->maybe_award_forum_points( $user_id, $amount, 'forum_reply' );
+                }
+        }
 
 	/**
 	 * Award points when classifieds are published.
@@ -201,10 +272,14 @@ class LGD_Gamification {
 	                return;
 	        }
 
-	        if ( $post->post_author ) {
-	                $this->add_points( $post->post_author, 5, 'classified_publish', array( 'post_id' => $post_id ) );
-	        }
-	}
+                if ( $post->post_author ) {
+                        $amount = $this->get_points_rule( 'classified_publish' );
+
+                        if ( $amount > 0 ) {
+                                $this->add_points( $post->post_author, $amount, 'classified_publish', array( 'post_id' => $post_id ) );
+                        }
+                }
+        }
 
 	/**
 	 * Award points when a business listing is published.
@@ -222,10 +297,14 @@ class LGD_Gamification {
 	                return;
 	        }
 
-	        if ( $post->post_author ) {
-	                $this->add_points( $post->post_author, 10, 'business_publish', array( 'post_id' => $post_id ) );
-	        }
-	}
+                if ( $post->post_author ) {
+                        $amount = $this->get_points_rule( 'business_publish' );
+
+                        if ( $amount > 0 ) {
+                                $this->add_points( $post->post_author, $amount, 'business_publish', array( 'post_id' => $post_id ) );
+                        }
+                }
+        }
 
 	/**
 	 * Add an admin screen for manual point adjustments.
@@ -348,27 +427,58 @@ class LGD_Gamification {
 	 * @param int $user_id User ID.
 	 * @param int $amount  Points to add.
 	 */
-	private function maybe_award_forum_points( $user_id, $amount ) {
-	        $today      = gmdate( 'Y-m-d' );
-	        $meta_key   = '_lgd_forum_points_' . $today;
-	        $current    = (int) get_user_meta( $user_id, $meta_key, true );
-	        $new_total  = $current + $amount;
-	        $cap_amount = min( $new_total, $this->forum_daily_cap );
-	        $award      = $cap_amount - $current;
+        private function maybe_award_forum_points( $user_id, $amount, $reason ) {
+                $amount = (int) $amount;
 
-	        if ( $award <= 0 ) {
-	                return;
-	        }
+                if ( $amount <= 0 ) {
+                        return;
+                }
 
-	        update_user_meta( $user_id, $meta_key, $cap_amount );
-	        $this->add_points( $user_id, $award, 'forum_activity' );
-	}
+                $today    = gmdate( 'Y-m-d' );
+                $meta_key = '_lgd_forum_points_' . $today;
+                $current  = (int) get_user_meta( $user_id, $meta_key, true );
 
-	/**
-	 * Add points to a user.
-	 *
-	 * @param int    $user_id User ID.
-	 * @param int    $amount  Amount to add.
+                if ( $this->forum_daily_cap <= 0 ) {
+                        update_user_meta( $user_id, $meta_key, $current + $amount );
+                        $this->add_points( $user_id, $amount, $reason );
+                        return;
+                }
+
+                $new_total  = $current + $amount;
+                $cap_amount = min( $new_total, $this->forum_daily_cap );
+                $award      = $cap_amount - $current;
+
+                if ( $award <= 0 ) {
+                        return;
+                }
+
+                update_user_meta( $user_id, $meta_key, $cap_amount );
+                $this->add_points( $user_id, $award, $reason );
+        }
+
+        /**
+         * Retrieve the configured point rule for an action.
+         *
+         * @param string $key Action key.
+         * @return int
+         */
+        private function get_points_rule( $key ) {
+                if ( isset( $this->points_rules[ $key ] ) ) {
+                        return (int) $this->points_rules[ $key ];
+                }
+
+                if ( isset( $this->default_points_rules[ $key ] ) ) {
+                        return (int) $this->default_points_rules[ $key ];
+                }
+
+                return 0;
+        }
+
+        /**
+         * Add points to a user.
+         *
+         * @param int    $user_id User ID.
+         * @param int    $amount  Amount to add.
 	 * @param string $reason  Reason code.
 	 * @param array  $context Optional context data.
 	 */

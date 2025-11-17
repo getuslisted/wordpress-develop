@@ -60,6 +60,21 @@ class LGD_Admin {
         const OPTION_SUPPORT_LINK = 'lgd_support_link';
 
         /**
+         * Option key storing point values for gamification actions.
+         */
+        const OPTION_GAMIFICATION_POINTS = 'lgd_points_rules';
+
+        /**
+         * Option key storing the daily forum point cap.
+         */
+        const OPTION_FORUM_DAILY_CAP = 'lgd_forum_daily_cap';
+
+        /**
+         * Option key storing rank threshold configuration.
+         */
+        const OPTION_RANK_RULES = 'lgd_rank_rules';
+
+        /**
          * Meta key storing disabled features for a user.
          */
         const META_DISABLED_FEATURES = '_lgd_disabled_features';
@@ -171,6 +186,30 @@ class LGD_Admin {
                 if ( false === get_option( self::OPTION_SUPPORT_LINK, false ) ) {
                         add_option( self::OPTION_SUPPORT_LINK, '' );
                 }
+
+                if ( false === get_option( self::OPTION_GAMIFICATION_POINTS, false ) ) {
+                        $points = array();
+
+                        if ( class_exists( 'Local_Gamified_Directory' ) ) {
+                                $points = Local_Gamified_Directory::instance()->get_default_points_rules();
+                        }
+
+                        add_option( self::OPTION_GAMIFICATION_POINTS, $points );
+                }
+
+                if ( false === get_option( self::OPTION_FORUM_DAILY_CAP, false ) ) {
+                        add_option( self::OPTION_FORUM_DAILY_CAP, LGD_Gamification::DEFAULT_FORUM_DAILY_CAP );
+                }
+
+                if ( false === get_option( self::OPTION_RANK_RULES, false ) ) {
+                        $ranks = array();
+
+                        if ( class_exists( 'Local_Gamified_Directory' ) ) {
+                                $ranks = Local_Gamified_Directory::instance()->get_default_rank_thresholds();
+                        }
+
+                        add_option( self::OPTION_RANK_RULES, $ranks );
+                }
         }
 
         /**
@@ -238,6 +277,10 @@ class LGD_Admin {
                 register_setting( 'lgd_admin_assistance', self::OPTION_HELP_TEXTS, array( $this, 'sanitize_help_texts' ) );
                 register_setting( 'lgd_admin_assistance', self::OPTION_SUPPORT_MESSAGE, array( $this, 'sanitize_support_message' ) );
                 register_setting( 'lgd_admin_assistance', self::OPTION_SUPPORT_LINK, array( $this, 'sanitize_support_link' ) );
+
+                register_setting( 'lgd_admin_gamification', self::OPTION_GAMIFICATION_POINTS, array( $this, 'sanitize_points_rules' ) );
+                register_setting( 'lgd_admin_gamification', self::OPTION_FORUM_DAILY_CAP, array( $this, 'sanitize_forum_daily_cap' ) );
+                register_setting( 'lgd_admin_gamification', self::OPTION_RANK_RULES, array( $this, 'sanitize_rank_thresholds' ) );
         }
 
         /**
@@ -400,6 +443,82 @@ class LGD_Admin {
         }
 
         /**
+         * Sanitize custom point rule configuration.
+         *
+         * @param mixed $input Raw value from the request.
+         * @return array
+         */
+        public function sanitize_points_rules( $input ) {
+                $input   = is_array( $input ) ? $input : array();
+                $actions = $this->plugin->get_point_actions();
+                $clean   = array();
+
+                foreach ( $actions as $key => $action ) {
+                        $value = isset( $input[ $key ] ) ? absint( $input[ $key ] ) : null;
+
+                        if ( null === $value ) {
+                                $value = isset( $action['default'] ) ? (int) $action['default'] : 0;
+                        }
+
+                        $clean[ $key ] = max( 0, $value );
+                }
+
+                return $clean;
+        }
+
+        /**
+         * Sanitize the forum daily cap allowing unlimited when zero.
+         *
+         * @param mixed $value Raw value.
+         * @return int
+         */
+        public function sanitize_forum_daily_cap( $value ) {
+                if ( '' === $value || null === $value ) {
+                        return LGD_Gamification::DEFAULT_FORUM_DAILY_CAP;
+                }
+
+                return absint( $value );
+        }
+
+        /**
+         * Sanitise rank threshold configuration rows.
+         *
+         * @param mixed $input Raw request value.
+         * @return array
+         */
+        public function sanitize_rank_thresholds( $input ) {
+                $defaults = $this->plugin->get_default_rank_thresholds();
+
+                if ( ! is_array( $input ) ) {
+                        return $defaults;
+                }
+
+                $mins   = isset( $input['min'] ) ? (array) $input['min'] : array();
+                $labels = isset( $input['label'] ) ? (array) $input['label'] : array();
+                $count  = max( count( $mins ), count( $labels ) );
+                $output = array();
+
+                for ( $i = 0; $i < $count; $i++ ) {
+                        $min   = isset( $mins[ $i ] ) ? absint( $mins[ $i ] ) : null;
+                        $label = isset( $labels[ $i ] ) ? sanitize_text_field( $labels[ $i ] ) : '';
+
+                        if ( null === $min || '' === $label ) {
+                                continue;
+                        }
+
+                        $output[ $min ] = $label;
+                }
+
+                if ( empty( $output ) ) {
+                        return $defaults;
+                }
+
+                krsort( $output, SORT_NUMERIC );
+
+                return $output;
+        }
+
+        /**
          * Render the admin settings interface with tabs.
          */
         public function render_settings_page() {
@@ -412,6 +531,7 @@ class LGD_Admin {
                         'general'     => __( 'Controls', 'local-gamified-directory' ),
                         'abuse'       => __( 'Abuse Management', 'local-gamified-directory' ),
                         'social'      => __( 'Social Login', 'local-gamified-directory' ),
+                        'gamification' => __( 'Gamification', 'local-gamified-directory' ),
                         'assistance'  => __( 'Guided Help', 'local-gamified-directory' ),
                 );
                 ?>
@@ -435,6 +555,9 @@ class LGD_Admin {
                                                 break;
                                         case 'assistance':
                                                 $this->render_assistance_tab();
+                                                break;
+                                        case 'gamification':
+                                                $this->render_gamification_tab();
                                                 break;
                                         case 'general':
                                         default:
@@ -501,6 +624,111 @@ class LGD_Admin {
                                                         <p class="description"><?php esc_html_e( 'Optional URL that points to your help center or knowledge base.', 'local-gamified-directory' ); ?></p>
                                                 </td>
                                         </tr>
+                                </tbody>
+                        </table>
+                        <?php submit_button(); ?>
+                </form>
+                <?php
+        }
+
+        /**
+         * Render the gamification settings tab.
+         */
+        private function render_gamification_tab() {
+                $actions  = $this->plugin->get_point_actions();
+                $defaults = $this->plugin->get_default_points_rules();
+                $saved    = get_option( self::OPTION_GAMIFICATION_POINTS, array() );
+
+                if ( ! is_array( $saved ) ) {
+                        $saved = array();
+                }
+
+                $rules = array();
+                foreach ( $actions as $key => $action ) {
+                        $default       = isset( $defaults[ $key ] ) ? (int) $defaults[ $key ] : 0;
+                        $rules[ $key ] = isset( $saved[ $key ] ) ? absint( $saved[ $key ] ) : $default;
+                }
+
+                $forum_cap = get_option( self::OPTION_FORUM_DAILY_CAP, LGD_Gamification::DEFAULT_FORUM_DAILY_CAP );
+
+                $rank_rules = get_option( self::OPTION_RANK_RULES, array() );
+                if ( ! is_array( $rank_rules ) || empty( $rank_rules ) ) {
+                        $rank_rules = $this->plugin->get_default_rank_thresholds();
+                }
+
+                $normalized = array();
+                foreach ( $rank_rules as $min => $label ) {
+                        $normalized[ absint( $min ) ] = (string) $label;
+                }
+                krsort( $normalized, SORT_NUMERIC );
+
+                $rows = array();
+                foreach ( $normalized as $min => $label ) {
+                        $rows[] = array(
+                                'min'   => $min,
+                                'label' => $label,
+                        );
+                }
+
+                $min_rows = max( count( $rows ) + 1, 4 );
+                while ( count( $rows ) < $min_rows ) {
+                        $rows[] = array(
+                                'min'   => '',
+                                'label' => '',
+                        );
+                }
+                ?>
+                <form method="post" action="options.php">
+                        <?php settings_fields( 'lgd_admin_gamification' ); ?>
+                        <h2><?php esc_html_e( 'Point values', 'local-gamified-directory' ); ?></h2>
+                        <p class="description"><?php esc_html_e( 'Adjust how many points users receive for common actions.', 'local-gamified-directory' ); ?></p>
+                        <table class="form-table" role="presentation">
+                                <tbody>
+                                        <?php foreach ( $actions as $key => $action ) :
+                                                $label       = isset( $action['label'] ) ? $action['label'] : ucfirst( str_replace( '_', ' ', $key ) );
+                                                $description = isset( $action['description'] ) ? $action['description'] : '';
+                                                $field_id    = 'lgd_points_rules_' . sanitize_key( $key );
+                                                ?>
+                                                <tr>
+                                                        <th scope="row"><label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( $label ); ?></label></th>
+                                                        <td>
+                                                                <input type="number" id="<?php echo esc_attr( $field_id ); ?>" name="<?php echo esc_attr( self::OPTION_GAMIFICATION_POINTS ); ?>[<?php echo esc_attr( $key ); ?>]" value="<?php echo esc_attr( $rules[ $key ] ); ?>" min="0" />
+                                                                <?php if ( $description ) : ?>
+                                                                        <p class="description"><?php echo esc_html( $description ); ?></p>
+                                                                <?php endif; ?>
+                                                        </td>
+                                                </tr>
+                                        <?php endforeach; ?>
+                                        <tr>
+                                                <th scope="row"><label for="lgd_forum_daily_cap"><?php esc_html_e( 'Forum daily cap', 'local-gamified-directory' ); ?></label></th>
+                                                <td>
+                                                        <input type="number" id="lgd_forum_daily_cap" name="<?php echo esc_attr( self::OPTION_FORUM_DAILY_CAP ); ?>" value="<?php echo esc_attr( $forum_cap ); ?>" min="0" />
+                                                        <p class="description"><?php esc_html_e( 'Maximum points a user can earn from forum activity per day. Set to 0 for no cap.', 'local-gamified-directory' ); ?></p>
+                                                </td>
+                                        </tr>
+                                </tbody>
+                        </table>
+
+                        <h2><?php esc_html_e( 'Rank thresholds', 'local-gamified-directory' ); ?></h2>
+                        <p class="description"><?php esc_html_e( 'Define the minimum point totals required for each rank. Leave extra rows blank to remove them.', 'local-gamified-directory' ); ?></p>
+                        <table class="widefat striped">
+                                <thead>
+                                        <tr>
+                                                <th><?php esc_html_e( 'Minimum points', 'local-gamified-directory' ); ?></th>
+                                                <th><?php esc_html_e( 'Rank label', 'local-gamified-directory' ); ?></th>
+                                        </tr>
+                                </thead>
+                                <tbody>
+                                        <?php foreach ( $rows as $row ) : ?>
+                                                <tr>
+                                                        <td>
+                                                                <input type="number" name="<?php echo esc_attr( self::OPTION_RANK_RULES ); ?>[min][]" value="<?php echo esc_attr( $row['min'] ); ?>" min="0" />
+                                                        </td>
+                                                        <td>
+                                                                <input type="text" name="<?php echo esc_attr( self::OPTION_RANK_RULES ); ?>[label][]" value="<?php echo esc_attr( $row['label'] ); ?>" class="regular-text" />
+                                                        </td>
+                                                </tr>
+                                        <?php endforeach; ?>
                                 </tbody>
                         </table>
                         <?php submit_button(); ?>

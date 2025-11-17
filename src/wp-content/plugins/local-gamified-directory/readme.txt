@@ -31,8 +31,9 @@ The plugin is organized into dedicated modules for front-end forms, gamification
 1. Upload the plugin directory to `/wp-content/plugins/` or install through the WordPress plugins screen.
 2. Activate the plugin through the "Plugins" menu.
 3. Visit **Settings → Directory Subscriptions** to configure your PayPal button ID, subscription mode, and monthly token allowance.
-4. Create pages that contain the shortcodes you plan to use (see below) and assign appropriate user roles to your community members.
-5. (Optional) Configure bbPress forums to unlock forum-based gamification rewards.
+4. Review **Settings → Local Directory Administration → Gamification** to tune point awards, forum daily caps, and rank titles for your community.
+5. Create pages that contain the shortcodes you plan to use (see below) and assign appropriate user roles to your community members.
+6. (Optional) Configure bbPress forums to unlock forum-based gamification rewards.
 
 == Shortcodes ==
 
