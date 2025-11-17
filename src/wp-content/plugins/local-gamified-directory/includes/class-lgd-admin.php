@@ -105,6 +105,11 @@ class LGD_Admin {
         const TABLE_SANCTIONS = 'lgd_user_sanctions';
 
         /**
+         * Maximum number of records exported at once.
+         */
+        const EXPORT_MAX_RECORDS = 5000;
+
+        /**
          * Plugin instance.
          *
          * @var Local_Gamified_Directory
@@ -121,6 +126,7 @@ class LGD_Admin {
 
                 add_action( 'admin_menu', array( $this, 'register_menu' ) );
                 add_action( 'admin_init', array( $this, 'register_settings' ) );
+                add_action( 'admin_init', array( $this, 'maybe_export_activity' ) );
                 add_action( 'show_user_profile', array( $this, 'render_user_fields' ) );
                 add_action( 'edit_user_profile', array( $this, 'render_user_fields' ) );
                 add_action( 'personal_options_update', array( $this, 'save_user_fields' ) );
@@ -281,6 +287,66 @@ class LGD_Admin {
                 register_setting( 'lgd_admin_gamification', self::OPTION_GAMIFICATION_POINTS, array( $this, 'sanitize_points_rules' ) );
                 register_setting( 'lgd_admin_gamification', self::OPTION_FORUM_DAILY_CAP, array( $this, 'sanitize_forum_daily_cap' ) );
                 register_setting( 'lgd_admin_gamification', self::OPTION_RANK_RULES, array( $this, 'sanitize_rank_thresholds' ) );
+        }
+
+        /**
+         * Export activity data when requested.
+         */
+        public function maybe_export_activity() {
+                if ( empty( $_GET['lgd_export_activity'] ) ) {
+                        return;
+                }
+
+                if ( ! current_user_can( 'manage_options' ) ) {
+                        return;
+                }
+
+                check_admin_referer( 'lgd_export_activity' );
+
+                $range = isset( $_GET['range'] ) ? absint( $_GET['range'] ) : 0;
+                $range = min( $range, 365 );
+
+                $activity = $this->plugin->get_activity();
+                if ( ! $activity ) {
+                        return;
+                }
+
+                $records = $activity->get_events_for_range( $range, self::EXPORT_MAX_RECORDS );
+
+                if ( headers_sent() ) {
+                        return;
+                }
+
+                nocache_headers();
+                header( 'Content-Type: text/csv; charset=utf-8' );
+                header( 'Content-Disposition: attachment; filename="lgd-activity-' . gmdate( 'Ymd-His' ) . '.csv"' );
+
+                $output = fopen( 'php://output', 'w' );
+                if ( ! $output ) {
+                        exit;
+                }
+
+                fputcsv( $output, array( 'id', 'user_id', 'event', 'object_type', 'object_id', 'details', 'ip_address', 'user_agent', 'created_at' ) );
+
+                foreach ( $records as $record ) {
+                        fputcsv(
+                                $output,
+                                array(
+                                        $record['id'],
+                                        $record['user_id'],
+                                        $record['event'],
+                                        $record['object_type'],
+                                        $record['object_id'],
+                                        $record['details'],
+                                        $record['ip_address'],
+                                        $record['user_agent'],
+                                        $record['created_at'],
+                                )
+                        );
+                }
+
+                fclose( $output );
+                exit;
         }
 
         /**
@@ -529,6 +595,7 @@ class LGD_Admin {
                 $active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'general';
                 $tabs       = array(
                         'general'     => __( 'Controls', 'local-gamified-directory' ),
+                        'analytics'   => __( 'Analytics', 'local-gamified-directory' ),
                         'abuse'       => __( 'Abuse Management', 'local-gamified-directory' ),
                         'social'      => __( 'Social Login', 'local-gamified-directory' ),
                         'gamification' => __( 'Gamification', 'local-gamified-directory' ),
@@ -547,6 +614,9 @@ class LGD_Admin {
                         <div class="lgd-admin-tab lgd-admin-tab--<?php echo esc_attr( $active_tab ); ?>">
                                 <?php
                                 switch ( $active_tab ) {
+                                        case 'analytics':
+                                                $this->render_analytics_tab();
+                                                break;
                                         case 'abuse':
                                                 $this->render_abuse_tab();
                                                 break;
@@ -890,7 +960,7 @@ class LGD_Admin {
                 <?php
                 $activity = $this->plugin->get_activity();
                 if ( $activity ) {
-                        $events = $activity->get_recent_events( 20 );
+                        $events = $activity->get_recent_events( 20, 30 );
                         ?>
                         <h2><?php esc_html_e( 'Recent activity events', 'local-gamified-directory' ); ?></h2>
                         <table class="widefat striped">
@@ -921,6 +991,233 @@ class LGD_Admin {
                         </table>
                         <?php
                 }
+        }
+
+        /**
+         * Render the analytics tab with summaries and exports.
+         */
+        private function render_analytics_tab() {
+                $ranges = array(
+                        7  => __( 'Last 7 days', 'local-gamified-directory' ),
+                        30 => __( 'Last 30 days', 'local-gamified-directory' ),
+                        90 => __( 'Last 90 days', 'local-gamified-directory' ),
+                        0  => __( 'All time', 'local-gamified-directory' ),
+                );
+
+                $range = isset( $_GET['range'] ) ? absint( $_GET['range'] ) : 30;
+                if ( ! array_key_exists( $range, $ranges ) ) {
+                        $range = 30;
+                }
+
+                $activity = $this->plugin->get_activity();
+
+                $summary                 = array( 'total_events' => 0, 'unique_users' => 0 );
+                $event_counts            = array();
+                $top_users               = array();
+                $recent_events           = array();
+                $ad_impressions          = 0;
+                $ad_clicks               = 0;
+                $business_submissions    = 0;
+                $classified_submissions  = 0;
+                $claim_requests          = 0;
+
+                if ( $activity && $this->plugin->is_feature_enabled( 'activity_tracking' ) ) {
+                        $summary                = $activity->get_summary( $range );
+                        $event_counts           = $activity->get_event_counts( $range, 10 );
+                        $top_users              = $activity->get_top_users( $range, 5 );
+                        $recent_events          = $activity->get_recent_events( 10, $range );
+                        $ad_impressions         = $activity->get_event_total( 'ad_impression', $range );
+                        $ad_clicks              = $activity->get_event_total( 'ad_click', $range );
+                        $business_submissions   = $activity->get_event_total( 'business_submission', $range );
+                        $classified_submissions = $activity->get_event_total( 'classified_submission', $range );
+                        $claim_requests         = $activity->get_event_total( 'business_claim_request', $range );
+                }
+
+                $business_counts   = wp_count_posts( 'business_listing' );
+                $classified_counts = wp_count_posts( 'classified_listing' );
+                $ad_counts         = wp_count_posts( LGD_Ads::POST_TYPE );
+                $sanctions         = $this->get_sanction_totals();
+
+                $export_url = wp_nonce_url(
+                        add_query_arg(
+                                array(
+                                        'page'                => 'lgd-admin',
+                                        'tab'                 => 'analytics',
+                                        'range'               => $range,
+                                        'lgd_export_activity' => 1,
+                                ),
+                                admin_url( 'admin.php' )
+                        ),
+                        'lgd_export_activity'
+                );
+
+                $user_ids = wp_list_pluck( $top_users, 'user_id' );
+                $user_map = array();
+                if ( ! empty( $user_ids ) ) {
+                        $users = get_users(
+                                array(
+                                        'include' => array_map( 'absint', $user_ids ),
+                                )
+                        );
+
+                        foreach ( $users as $user ) {
+                                $user_map[ $user->ID ] = $user;
+                        }
+                }
+
+                ?>
+                <form method="get" class="lgd-analytics-range">
+                        <input type="hidden" name="page" value="lgd-admin" />
+                        <input type="hidden" name="tab" value="analytics" />
+                        <label for="lgd-analytics-range"><?php esc_html_e( 'Reporting window', 'local-gamified-directory' ); ?></label>
+                        <select name="range" id="lgd-analytics-range">
+                                <?php foreach ( $ranges as $value => $label ) : ?>
+                                        <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $value, $range ); ?>><?php echo esc_html( $label ); ?></option>
+                                <?php endforeach; ?>
+                        </select>
+                        <?php submit_button( __( 'Update', 'local-gamified-directory' ), 'secondary', '', false ); ?>
+                        <a class="button" href="<?php echo esc_url( $export_url ); ?>"><?php esc_html_e( 'Export activity CSV', 'local-gamified-directory' ); ?></a>
+                </form>
+
+                <h2><?php esc_html_e( 'At a glance', 'local-gamified-directory' ); ?></h2>
+                <table class="widefat striped">
+                        <tbody>
+                                <tr>
+                                        <td><?php esc_html_e( 'Business listings', 'local-gamified-directory' ); ?></td>
+                                        <td><?php printf( esc_html__( '%1$s published / %2$s pending', 'local-gamified-directory' ), number_format_i18n( isset( $business_counts->publish ) ? $business_counts->publish : 0 ), number_format_i18n( isset( $business_counts->pending ) ? $business_counts->pending : 0 ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Classified listings', 'local-gamified-directory' ); ?></td>
+                                        <td><?php printf( esc_html__( '%1$s published / %2$s pending', 'local-gamified-directory' ), number_format_i18n( isset( $classified_counts->publish ) ? $classified_counts->publish : 0 ), number_format_i18n( isset( $classified_counts->pending ) ? $classified_counts->pending : 0 ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Active ads', 'local-gamified-directory' ); ?></td>
+                                        <td><?php printf( esc_html__( '%s total ads', 'local-gamified-directory' ), number_format_i18n( isset( $ad_counts->publish ) ? $ad_counts->publish : 0 ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Open warnings', 'local-gamified-directory' ); ?></td>
+                                        <td><?php echo esc_html( number_format_i18n( $sanctions['warnings_open'] ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Active suspensions', 'local-gamified-directory' ); ?></td>
+                                        <td><?php echo esc_html( number_format_i18n( $sanctions['suspensions_open'] ) ); ?></td>
+                                </tr>
+                        </tbody>
+                </table>
+
+                <?php if ( ! $activity || ! $this->plugin->is_feature_enabled( 'activity_tracking' ) ) : ?>
+                        <p><?php esc_html_e( 'Activity tracking is currently disabled. Enable the activity tracking feature to view engagement metrics.', 'local-gamified-directory' ); ?></p>
+                        <?php return; ?>
+                <?php endif; ?>
+
+                <h2><?php esc_html_e( 'Engagement summary', 'local-gamified-directory' ); ?></h2>
+                <table class="widefat striped">
+                        <tbody>
+                                <tr>
+                                        <td><?php esc_html_e( 'Events recorded', 'local-gamified-directory' ); ?></td>
+                                        <td><?php echo esc_html( number_format_i18n( $summary['total_events'] ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Unique participants', 'local-gamified-directory' ); ?></td>
+                                        <td><?php echo esc_html( number_format_i18n( $summary['unique_users'] ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Business submissions', 'local-gamified-directory' ); ?></td>
+                                        <td><?php echo esc_html( number_format_i18n( $business_submissions ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Classified submissions', 'local-gamified-directory' ); ?></td>
+                                        <td><?php echo esc_html( number_format_i18n( $classified_submissions ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Claim requests', 'local-gamified-directory' ); ?></td>
+                                        <td><?php echo esc_html( number_format_i18n( $claim_requests ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Ad impressions', 'local-gamified-directory' ); ?></td>
+                                        <td><?php echo esc_html( number_format_i18n( $ad_impressions ) ); ?></td>
+                                </tr>
+                                <tr>
+                                        <td><?php esc_html_e( 'Ad clicks', 'local-gamified-directory' ); ?></td>
+                                        <td><?php echo esc_html( number_format_i18n( $ad_clicks ) ); ?></td>
+                                </tr>
+                        </tbody>
+                </table>
+
+                <h2><?php esc_html_e( 'Top events', 'local-gamified-directory' ); ?></h2>
+                <table class="widefat striped">
+                        <thead>
+                                <tr>
+                                        <th><?php esc_html_e( 'Event', 'local-gamified-directory' ); ?></th>
+                                        <th><?php esc_html_e( 'Occurrences', 'local-gamified-directory' ); ?></th>
+                                </tr>
+                        </thead>
+                        <tbody>
+                                <?php if ( empty( $event_counts ) ) : ?>
+                                        <tr><td colspan="2"><?php esc_html_e( 'No activity recorded for the selected window.', 'local-gamified-directory' ); ?></td></tr>
+                                <?php else : ?>
+                                        <?php foreach ( $event_counts as $event ) : ?>
+                                                <tr>
+                                                        <td><?php echo esc_html( $event['event'] ); ?></td>
+                                                        <td><?php echo esc_html( number_format_i18n( $event['total'] ) ); ?></td>
+                                                </tr>
+                                        <?php endforeach; ?>
+                                <?php endif; ?>
+                        </tbody>
+                </table>
+
+                <h2><?php esc_html_e( 'Most active users', 'local-gamified-directory' ); ?></h2>
+                <table class="widefat striped">
+                        <thead>
+                                <tr>
+                                        <th><?php esc_html_e( 'User', 'local-gamified-directory' ); ?></th>
+                                        <th><?php esc_html_e( 'Events recorded', 'local-gamified-directory' ); ?></th>
+                                </tr>
+                        </thead>
+                        <tbody>
+                                <?php if ( empty( $top_users ) ) : ?>
+                                        <tr><td colspan="2"><?php esc_html_e( 'No user activity captured for the selected window.', 'local-gamified-directory' ); ?></td></tr>
+                                <?php else : ?>
+                                        <?php foreach ( $top_users as $row ) :
+                                                $user = isset( $user_map[ $row['user_id'] ] ) ? $user_map[ $row['user_id'] ] : null;
+                                                ?>
+                                                <tr>
+                                                        <td><?php echo $user ? esc_html( $user->display_name ) : esc_html__( 'User ID', 'local-gamified-directory' ) . ' ' . absint( $row['user_id'] ); ?></td>
+                                                        <td><?php echo esc_html( number_format_i18n( $row['total'] ) ); ?></td>
+                                                </tr>
+                                        <?php endforeach; ?>
+                                <?php endif; ?>
+                        </tbody>
+                </table>
+
+                <h2><?php esc_html_e( 'Recent events', 'local-gamified-directory' ); ?></h2>
+                <table class="widefat striped">
+                        <thead>
+                                <tr>
+                                        <th><?php esc_html_e( 'User', 'local-gamified-directory' ); ?></th>
+                                        <th><?php esc_html_e( 'Event', 'local-gamified-directory' ); ?></th>
+                                        <th><?php esc_html_e( 'Object', 'local-gamified-directory' ); ?></th>
+                                        <th><?php esc_html_e( 'Recorded', 'local-gamified-directory' ); ?></th>
+                                </tr>
+                        </thead>
+                        <tbody>
+                                <?php if ( empty( $recent_events ) ) : ?>
+                                        <tr><td colspan="4"><?php esc_html_e( 'No activity recorded for the selected window.', 'local-gamified-directory' ); ?></td></tr>
+                                <?php else : ?>
+                                        <?php foreach ( $recent_events as $event ) :
+                                                $user = $event->user_id ? get_userdata( $event->user_id ) : null;
+                                                ?>
+                                                <tr>
+                                                        <td><?php echo $user ? esc_html( $user->display_name ) : esc_html__( 'Guest', 'local-gamified-directory' ); ?></td>
+                                                        <td><?php echo esc_html( $event->event ); ?></td>
+                                                        <td><?php echo esc_html( $event->object_type ); ?><?php echo $event->object_id ? ' #' . absint( $event->object_id ) : ''; ?></td>
+                                                        <td><?php echo esc_html( get_date_from_gmt( $event->created_at, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ); ?></td>
+                                                </tr>
+                                        <?php endforeach; ?>
+                                <?php endif; ?>
+                        </tbody>
+                </table>
+                <?php
         }
 
         /**
@@ -1093,6 +1390,48 @@ class LGD_Admin {
                 $table = $wpdb->prefix . self::TABLE_SANCTIONS;
 
                 return $wpdb->get_results( "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT 25" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+        }
+
+        /**
+         * Retrieve counts of recorded sanctions.
+         *
+         * @return array
+         */
+        private function get_sanction_totals() {
+                global $wpdb;
+
+                $table = $wpdb->prefix . self::TABLE_SANCTIONS;
+
+                $results = $wpdb->get_results( "SELECT type, status, COUNT(*) AS total FROM {$table} GROUP BY type, status" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+
+                $totals = array(
+                        'warnings_open'     => 0,
+                        'suspensions_open'  => 0,
+                        'warnings_total'    => 0,
+                        'suspensions_total' => 0,
+                );
+
+                if ( empty( $results ) ) {
+                        return $totals;
+                }
+
+                foreach ( $results as $row ) {
+                        if ( 'warning' === $row->type ) {
+                                $totals['warnings_total'] += (int) $row->total;
+                                if ( 'open' === $row->status ) {
+                                        $totals['warnings_open'] += (int) $row->total;
+                                }
+                        }
+
+                        if ( 'suspension' === $row->type ) {
+                                $totals['suspensions_total'] += (int) $row->total;
+                                if ( 'open' === $row->status ) {
+                                        $totals['suspensions_open'] += (int) $row->total;
+                                }
+                        }
+                }
+
+                return $totals;
         }
 
         /**

@@ -322,6 +322,54 @@ class Tests_LocalGamifiedDirectory extends WP_UnitTestCase {
         }
 
         /**
+         * Analytics helpers should aggregate activity data and respect range filtering.
+         */
+        public function test_activity_analytics_helpers_respect_range() {
+                $activity = self::$plugin->get_activity();
+                $this->assertNotNull( $activity );
+
+                $user_one = self::factory()->user->create();
+                $user_two = self::factory()->user->create();
+
+                $activity->log_event( $user_one, 'business_submission', 'business_listing', 101 );
+                $activity->log_event( $user_one, 'business_submission', 'business_listing', 102 );
+                $activity->log_event( $user_two, 'classified_submission', 'classified_listing', 201 );
+                $activity->log_event( 0, 'ad_impression', 'lgd_ad', 301 );
+
+                global $wpdb;
+                $table = $wpdb->prefix . LGD_Activity::TABLE;
+
+                // Age one event outside the reporting window.
+                $wpdb->query( $wpdb->prepare( "UPDATE {$table} SET created_at = DATE_SUB(created_at, INTERVAL %d DAY) WHERE object_id = %d", 60, 201 ) );
+
+                $summary = $activity->get_summary( 30 );
+                $this->assertSame( 3, $summary['total_events'] );
+                $this->assertSame( 1, $summary['unique_users'] );
+
+                $recent_total = $activity->get_event_total( 'classified_submission', 30 );
+                $this->assertSame( 0, $recent_total );
+
+                $all_time_total = $activity->get_event_total( 'classified_submission', 0 );
+                $this->assertSame( 1, $all_time_total );
+
+                $event_counts = $activity->get_event_counts( 30, 5 );
+                $this->assertNotEmpty( $event_counts );
+                $this->assertSame( 'business_submission', $event_counts[0]['event'] );
+                $this->assertSame( 2, (int) $event_counts[0]['total'] );
+
+                $top_users = $activity->get_top_users( 30, 5 );
+                $this->assertCount( 1, $top_users );
+                $this->assertSame( $user_one, (int) $top_users[0]['user_id'] );
+                $this->assertSame( 2, (int) $top_users[0]['total'] );
+
+                $recent_events = $activity->get_recent_events( 5, 30 );
+                $this->assertCount( 3, $recent_events );
+
+                $export_rows = $activity->get_events_for_range( 30, 10 );
+                $this->assertCount( 3, $export_rows );
+        }
+
+        /**
          * Custom help text should surface inside tooltip markup when enabled.
          */
         public function test_help_tooltips_reflect_custom_text() {

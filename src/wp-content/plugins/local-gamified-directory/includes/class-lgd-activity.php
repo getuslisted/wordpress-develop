@@ -238,6 +238,177 @@ class LGD_Activity {
         }
 
         /**
+         * Retrieve activity summary information.
+         *
+         * @param int $days Number of days to include. Use 0 for all time.
+         *
+         * @return array
+         */
+        public function get_summary( $days = 0 ) {
+                global $wpdb;
+
+                $table = $wpdb->prefix . self::TABLE;
+                $since = $this->maybe_get_since( $days );
+
+                $total_sql  = "SELECT COUNT(*) FROM {$table}";
+                $total_args = array();
+
+                if ( $since ) {
+                        $total_sql  .= ' WHERE created_at >= %s';
+                        $total_args[] = $since;
+                }
+
+                $total = $total_args ? (int) $wpdb->get_var( $wpdb->prepare( $total_sql, $total_args ) ) : (int) $wpdb->get_var( $total_sql );
+
+                $unique_sql  = "SELECT COUNT( DISTINCT user_id ) FROM {$table} WHERE user_id > 0";
+                $unique_args = array();
+
+                if ( $since ) {
+                        $unique_sql  .= ' AND created_at >= %s';
+                        $unique_args[] = $since;
+                }
+
+                $unique = $unique_args ? (int) $wpdb->get_var( $wpdb->prepare( $unique_sql, $unique_args ) ) : (int) $wpdb->get_var( $unique_sql );
+
+                return array(
+                        'total_events' => $total,
+                        'unique_users' => $unique,
+                );
+        }
+
+        /**
+         * Retrieve aggregate counts for events within a window.
+         *
+         * @param int $days  Number of days to include. Use 0 for all time.
+         * @param int $limit Maximum rows to return. Use 0 for no limit.
+         *
+         * @return array[] Array of arrays containing event and total keys.
+         */
+        public function get_event_counts( $days = 0, $limit = 10 ) {
+                global $wpdb;
+
+                $table = $wpdb->prefix . self::TABLE;
+                $since = $this->maybe_get_since( $days );
+
+                $sql    = "SELECT event, COUNT(*) AS total FROM {$table}";
+                $params = array();
+
+                if ( $since ) {
+                        $sql      .= ' WHERE created_at >= %s';
+                        $params[]  = $since;
+                }
+
+                $sql .= ' GROUP BY event ORDER BY total DESC';
+
+                if ( $limit > 0 ) {
+                        $sql     .= ' LIMIT %d';
+                        $params[] = absint( $limit );
+                }
+
+                $query = $params ? $wpdb->prepare( $sql, $params ) : $sql;
+
+                return $wpdb->get_results( $query, ARRAY_A );
+        }
+
+        /**
+         * Retrieve the most active users within the specified window.
+         *
+         * @param int $days  Number of days to include. Use 0 for all time.
+         * @param int $limit Maximum rows to return. Use 0 for no limit.
+         *
+         * @return array[] Array with user_id and total keys.
+         */
+        public function get_top_users( $days = 0, $limit = 10 ) {
+                global $wpdb;
+
+                $table = $wpdb->prefix . self::TABLE;
+                $since = $this->maybe_get_since( $days );
+
+                $sql    = "SELECT user_id, COUNT(*) AS total FROM {$table} WHERE user_id > 0";
+                $params = array();
+
+                if ( $since ) {
+                        $sql      .= ' AND created_at >= %s';
+                        $params[]  = $since;
+                }
+
+                $sql .= ' GROUP BY user_id ORDER BY total DESC';
+
+                if ( $limit > 0 ) {
+                        $sql     .= ' LIMIT %d';
+                        $params[] = absint( $limit );
+                }
+
+                $query = $params ? $wpdb->prepare( $sql, $params ) : $sql;
+
+                return $wpdb->get_results( $query, ARRAY_A );
+        }
+
+        /**
+         * Retrieve the number of events recorded for a specific key.
+         *
+         * @param string $event Event key.
+         * @param int    $days  Number of days to include. Use 0 for all time.
+         *
+         * @return int
+         */
+        public function get_event_total( $event, $days = 0 ) {
+                global $wpdb;
+
+                $event = sanitize_key( $event );
+                if ( empty( $event ) ) {
+                        return 0;
+                }
+
+                $table = $wpdb->prefix . self::TABLE;
+                $since = $this->maybe_get_since( $days );
+
+                $sql    = "SELECT COUNT(*) FROM {$table} WHERE event = %s";
+                $params = array( $event );
+
+                if ( $since ) {
+                        $sql      .= ' AND created_at >= %s';
+                        $params[]  = $since;
+                }
+
+                return (int) $wpdb->get_var( $wpdb->prepare( $sql, $params ) );
+        }
+
+        /**
+         * Retrieve events for export.
+         *
+         * @param int $days  Number of days to include. Use 0 for all time.
+         * @param int $limit Maximum rows to return. Use 0 for no limit.
+         *
+         * @return array[] Rows ready for CSV export.
+         */
+        public function get_events_for_range( $days = 0, $limit = 0 ) {
+                global $wpdb;
+
+                $table = $wpdb->prefix . self::TABLE;
+                $since = $this->maybe_get_since( $days );
+
+                $sql    = "SELECT * FROM {$table}";
+                $params = array();
+
+                if ( $since ) {
+                        $sql      .= ' WHERE created_at >= %s';
+                        $params[]  = $since;
+                }
+
+                $sql .= ' ORDER BY created_at DESC';
+
+                if ( $limit > 0 ) {
+                        $sql     .= ' LIMIT %d';
+                        $params[] = absint( $limit );
+                }
+
+                $query = $params ? $wpdb->prepare( $sql, $params ) : $sql;
+
+                return $wpdb->get_results( $query, ARRAY_A );
+        }
+
+        /**
          * Possibly flag abuse based on high-frequency events.
          *
          * @param int    $user_id User ID.
@@ -312,7 +483,7 @@ class LGD_Activity {
          *
          * @return array
          */
-        public function get_recent_events( $limit = 50 ) {
+        public function get_recent_events( $limit = 50, $days = 0 ) {
                 global $wpdb;
 
                 $table = $wpdb->prefix . self::TABLE;
@@ -321,7 +492,20 @@ class LGD_Activity {
                         $limit = 50;
                 }
 
-                return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d", $limit ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+                $since = $this->maybe_get_since( $days );
+
+                $sql    = "SELECT * FROM {$table}";
+                $params = array();
+
+                if ( $since ) {
+                        $sql      .= ' WHERE created_at >= %s';
+                        $params[]  = $since;
+                }
+
+                $sql     .= ' ORDER BY created_at DESC LIMIT %d';
+                $params[] = $limit;
+
+                return $wpdb->get_results( $wpdb->prepare( $sql, $params ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
         }
 
         /**
@@ -340,5 +524,22 @@ class LGD_Activity {
                 $table  = $wpdb->prefix . self::TABLE;
 
                 $wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE created_at < %s", $cutoff ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+        }
+
+        /**
+         * Determine the minimum timestamp for a range.
+         *
+         * @param int $days Days to subtract.
+         *
+         * @return string|null
+         */
+        private function maybe_get_since( $days ) {
+                $days = absint( $days );
+
+                if ( $days <= 0 ) {
+                        return null;
+                }
+
+                return gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) );
         }
 }

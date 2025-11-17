@@ -22,6 +22,7 @@ Local Gamified Directory equips WordPress sites with everything needed to run a 
 * **PayPal subscriptions** to deliver premium, ad-free listings, monthly token allowances, and other perks.
 * **Minimalist, responsive front-end forms** for submitting businesses, classifieds, ads, and for managing user dashboards.
 * **Contextual guidance and admin controls** with configurable tooltips, support callouts, and feature toggles that reduce support requests and keep the community safe.
+* **Analytics dashboard and CSV export** so administrators can monitor engagement, sanction counts, ad interactions, and download activity logs for deeper analysis.
 * **Automated notifications** that alert admins and owners about new submissions, claim requests, approvals, and expiring classifieds.
 
 The plugin is organized into dedicated modules for front-end forms, gamification, ads, and subscriptions so you can easily extend or override specific functionality. All output uses semantic markup and ships with a lightweight stylesheet to get you started.
@@ -32,8 +33,9 @@ The plugin is organized into dedicated modules for front-end forms, gamification
 2. Activate the plugin through the "Plugins" menu.
 3. Visit **Settings → Directory Subscriptions** to configure your PayPal button ID, subscription mode, and monthly token allowance.
 4. Review **Settings → Local Directory Administration → Gamification** to tune point awards, forum daily caps, and rank titles for your community.
-5. Create pages that contain the shortcodes you plan to use (see below) and assign appropriate user roles to your community members.
-6. (Optional) Configure bbPress forums to unlock forum-based gamification rewards.
+5. Inspect **Settings → Local Directory Administration → Analytics** to validate activity tracking, adjust the reporting window, and export CSV logs if needed.
+6. Create pages that contain the shortcodes you plan to use (see below) and assign appropriate user roles to your community members.
+7. (Optional) Configure bbPress forums to unlock forum-based gamification rewards.
 
 == Shortcodes ==
 
