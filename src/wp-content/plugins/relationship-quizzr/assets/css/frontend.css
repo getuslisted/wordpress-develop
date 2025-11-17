@@ -1,0 +1,43 @@
+.rq-quiz-grid .card {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rq-quiz-grid .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
+}
+
+.rq-profile-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 10px 25px rgba(34, 34, 34, 0.07);
+}
+
+.rq-leaderboard table {
+    width: 100%;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
+}
+
+.rq-badge {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 0.35rem 1rem;
+    margin: 0.25rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.rq-empty {
+    padding: 1.5rem;
+    background: #fff3cd;
+    border: 1px solid #ffeeba;
+    border-radius: 0.75rem;
+    color: #856404;
+}
