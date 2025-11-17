@@ -40,6 +40,26 @@ class LGD_Admin {
         const OPTION_ACTIVITY_RETENTION = 'lgd_activity_retention_days';
 
         /**
+         * Option key storing contextual help overrides.
+         */
+        const OPTION_HELP_TEXTS = 'lgd_help_texts';
+
+        /**
+         * Option key toggling contextual help interfaces.
+         */
+        const OPTION_HELP_ENABLED = 'lgd_help_enabled';
+
+        /**
+         * Option key storing the support message displayed beneath forms.
+         */
+        const OPTION_SUPPORT_MESSAGE = 'lgd_support_message';
+
+        /**
+         * Option key storing the support link URL.
+         */
+        const OPTION_SUPPORT_LINK = 'lgd_support_link';
+
+        /**
          * Meta key storing disabled features for a user.
          */
         const META_DISABLED_FEATURES = '_lgd_disabled_features';
@@ -128,6 +148,29 @@ class LGD_Admin {
                 if ( false === get_option( self::OPTION_ACTIVITY_RETENTION, false ) ) {
                         add_option( self::OPTION_ACTIVITY_RETENTION, 90 );
                 }
+
+                if ( false === get_option( self::OPTION_HELP_ENABLED, false ) ) {
+                        add_option( self::OPTION_HELP_ENABLED, 1 );
+                }
+
+                if ( false === get_option( self::OPTION_HELP_TEXTS, false ) ) {
+                        $defaults = array();
+                        if ( class_exists( 'Local_Gamified_Directory' ) ) {
+                                $defaults = Local_Gamified_Directory::instance()->get_default_help_texts();
+                        }
+                        add_option( self::OPTION_HELP_TEXTS, $defaults );
+                }
+
+                if ( false === get_option( self::OPTION_SUPPORT_MESSAGE, false ) ) {
+                        add_option(
+                                self::OPTION_SUPPORT_MESSAGE,
+                                __( 'Need assistance? Hover over the question marks for quick guidance or reach out below.', 'local-gamified-directory' )
+                        );
+                }
+
+                if ( false === get_option( self::OPTION_SUPPORT_LINK, false ) ) {
+                        add_option( self::OPTION_SUPPORT_LINK, '' );
+                }
         }
 
         /**
@@ -190,6 +233,11 @@ class LGD_Admin {
                 register_setting( 'lgd_admin_social', 'lgd_social_google_client_secret', 'sanitize_text_field' );
                 register_setting( 'lgd_admin_social', 'lgd_social_facebook_app_id', 'sanitize_text_field' );
                 register_setting( 'lgd_admin_social', 'lgd_social_facebook_app_secret', 'sanitize_text_field' );
+
+                register_setting( 'lgd_admin_assistance', self::OPTION_HELP_ENABLED, array( $this, 'sanitize_checkbox' ) );
+                register_setting( 'lgd_admin_assistance', self::OPTION_HELP_TEXTS, array( $this, 'sanitize_help_texts' ) );
+                register_setting( 'lgd_admin_assistance', self::OPTION_SUPPORT_MESSAGE, array( $this, 'sanitize_support_message' ) );
+                register_setting( 'lgd_admin_assistance', self::OPTION_SUPPORT_LINK, array( $this, 'sanitize_support_link' ) );
         }
 
         /**
@@ -264,6 +312,94 @@ class LGD_Admin {
         }
 
         /**
+         * Sanitize checkbox values to either 1 or 0.
+         *
+         * @param mixed $value Raw value.
+         * @return int
+         */
+        public function sanitize_checkbox( $value ) {
+                return ! empty( $value ) ? 1 : 0;
+        }
+
+        /**
+         * Sanitize contextual help overrides.
+         *
+         * @param array $input Raw submitted values.
+         * @return array
+         */
+        public function sanitize_help_texts( $input ) {
+                $clean    = array();
+                $contexts = $this->plugin->get_help_contexts();
+
+                if ( ! is_array( $input ) ) {
+                        $input = array();
+                }
+
+                foreach ( $contexts as $key => $context ) {
+                        if ( empty( $input[ $key ] ) ) {
+                                continue;
+                        }
+
+                        $value = wp_unslash( $input[ $key ] );
+                        if ( ! is_string( $value ) ) {
+                                continue;
+                        }
+
+                        $value = trim( $value );
+
+                        if ( '' === $value ) {
+                                continue;
+                        }
+
+                        $clean[ $key ] = wp_kses_post( $value );
+                }
+
+                return $clean;
+        }
+
+        /**
+         * Sanitize the support message shown beneath forms.
+         *
+         * @param string $value Raw value.
+         * @return string
+         */
+        public function sanitize_support_message( $value ) {
+                if ( empty( $value ) ) {
+                        return '';
+                }
+
+                $value = is_string( $value ) ? wp_unslash( $value ) : '';
+                $value = trim( $value );
+
+                if ( '' === $value ) {
+                        return '';
+                }
+
+                return sanitize_textarea_field( $value );
+        }
+
+        /**
+         * Sanitize the optional support link.
+         *
+         * @param string $value Raw value.
+         * @return string
+         */
+        public function sanitize_support_link( $value ) {
+                if ( empty( $value ) ) {
+                        return '';
+                }
+
+                $value = is_string( $value ) ? wp_unslash( $value ) : '';
+                $value = trim( $value );
+
+                if ( '' === $value ) {
+                        return '';
+                }
+
+                return esc_url_raw( $value );
+        }
+
+        /**
          * Render the admin settings interface with tabs.
          */
         public function render_settings_page() {
@@ -273,9 +409,10 @@ class LGD_Admin {
 
                 $active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'general';
                 $tabs       = array(
-                        'general' => __( 'Controls', 'local-gamified-directory' ),
-                        'abuse'   => __( 'Abuse Management', 'local-gamified-directory' ),
-                        'social'  => __( 'Social Login', 'local-gamified-directory' ),
+                        'general'     => __( 'Controls', 'local-gamified-directory' ),
+                        'abuse'       => __( 'Abuse Management', 'local-gamified-directory' ),
+                        'social'      => __( 'Social Login', 'local-gamified-directory' ),
+                        'assistance'  => __( 'Guided Help', 'local-gamified-directory' ),
                 );
                 ?>
                 <div class="wrap">
@@ -296,6 +433,9 @@ class LGD_Admin {
                                         case 'social':
                                                 $this->render_social_tab();
                                                 break;
+                                        case 'assistance':
+                                                $this->render_assistance_tab();
+                                                break;
                                         case 'general':
                                         default:
                                                 $this->render_general_tab();
@@ -304,6 +444,67 @@ class LGD_Admin {
                                 ?>
                         </div>
                 </div>
+                <?php
+        }
+
+        /**
+         * Render the guided help tab.
+         */
+        private function render_assistance_tab() {
+                $help_enabled    = (bool) get_option( self::OPTION_HELP_ENABLED, 1 );
+                $stored_texts    = get_option( self::OPTION_HELP_TEXTS, array() );
+                $support_message = get_option( self::OPTION_SUPPORT_MESSAGE, '' );
+                $support_link    = get_option( self::OPTION_SUPPORT_LINK, '' );
+                $defaults        = $this->plugin->get_default_help_texts();
+                $contexts        = $this->plugin->get_help_contexts();
+
+                if ( ! is_array( $stored_texts ) ) {
+                        $stored_texts = array();
+                }
+                ?>
+                <form method="post" action="options.php">
+                        <?php settings_fields( 'lgd_admin_assistance' ); ?>
+                        <table class="form-table" role="presentation">
+                                <tbody>
+                                        <tr>
+                                                <th scope="row"><?php esc_html_e( 'Contextual help', 'local-gamified-directory' ); ?></th>
+                                                <td>
+                                                        <label>
+                                                                <input type="checkbox" name="<?php echo esc_attr( self::OPTION_HELP_ENABLED ); ?>" value="1" <?php checked( $help_enabled ); ?> />
+                                                                <?php esc_html_e( 'Display inline question mark tooltips across public forms and dashboards.', 'local-gamified-directory' ); ?>
+                                                        </label>
+                                                </td>
+                                        </tr>
+                                        <?php foreach ( $contexts as $key => $context ) :
+                                                $value       = isset( $stored_texts[ $key ] ) ? $stored_texts[ $key ] : '';
+                                                $placeholder = isset( $defaults[ $key ] ) ? $defaults[ $key ] : '';
+                                        ?>
+                                        <tr>
+                                                <th scope="row"><label for="lgd_help_<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $context['label'] ); ?></label></th>
+                                                <td>
+                                                        <textarea id="lgd_help_<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( self::OPTION_HELP_TEXTS ); ?>[<?php echo esc_attr( $key ); ?>]" rows="3" class="large-text" placeholder="<?php echo esc_attr( $placeholder ); ?>"><?php echo esc_textarea( $value ); ?></textarea>
+                                                        <p class="description"><?php esc_html_e( 'Leave blank to use the default guidance.', 'local-gamified-directory' ); ?><?php if ( ! empty( $context['description'] ) ) : ?> <?php echo esc_html( $context['description'] ); ?><?php endif; ?></p>
+                                                </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                        <tr>
+                                                <th scope="row"><label for="lgd_support_message"><?php esc_html_e( 'Support message', 'local-gamified-directory' ); ?></label></th>
+                                                <td>
+                                                        <textarea id="lgd_support_message" name="<?php echo esc_attr( self::OPTION_SUPPORT_MESSAGE ); ?>" rows="3" class="large-text"><?php echo esc_textarea( $support_message ); ?></textarea>
+                                                        <p class="description"><?php esc_html_e( 'Shown beneath forms and dashboards to guide users toward self-service help.', 'local-gamified-directory' ); ?></p>
+                                                </td>
+                                        </tr>
+                                        <tr>
+                                                <th scope="row"><label for="lgd_support_link"><?php esc_html_e( 'Support link', 'local-gamified-directory' ); ?></label></th>
+                                                <td>
+                                                        <input type="url" id="lgd_support_link" name="<?php echo esc_attr( self::OPTION_SUPPORT_LINK ); ?>" class="regular-text" value="<?php echo esc_attr( $support_link ); ?>" placeholder="https://" />
+                                                        <p class="description"><?php esc_html_e( 'Optional URL that points to your help center or knowledge base.', 'local-gamified-directory' ); ?></p>
+                                                </td>
+                                        </tr>
+                                </tbody>
+                        </table>
+                        <?php submit_button(); ?>
+                </form>
                 <?php
         }
 

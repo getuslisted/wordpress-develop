@@ -275,11 +275,11 @@ class Tests_LocalGamifiedDirectory extends WP_UnitTestCase {
 	/**
 	 * Activity purge should remove entries older than the retention window.
 	 */
-	public function test_activity_purge_removes_old_records() {
-		$activity = self::$plugin->get_activity();
-		$this->assertNotNull( $activity );
+        public function test_activity_purge_removes_old_records() {
+                $activity = self::$plugin->get_activity();
+                $this->assertNotNull( $activity );
 
-		global $wpdb;
+                global $wpdb;
 		$table = $wpdb->prefix . LGD_Activity::TABLE;
 
 		update_option( LGD_Admin::OPTION_ACTIVITY_RETENTION, 30 );
@@ -316,8 +316,37 @@ class Tests_LocalGamifiedDirectory extends WP_UnitTestCase {
 
 		$activity->purge_old_logs();
 
-		$events = $wpdb->get_col( "SELECT event FROM {$table} ORDER BY created_at ASC" );
+                $events = $wpdb->get_col( "SELECT event FROM {$table} ORDER BY created_at ASC" );
 
-		$this->assertSame( array( 'recent' ), $events );
-	}
+                $this->assertSame( array( 'recent' ), $events );
+        }
+
+        /**
+         * Custom help text should surface inside tooltip markup when enabled.
+         */
+        public function test_help_tooltips_reflect_custom_text() {
+                update_option( LGD_Admin::OPTION_HELP_ENABLED, 1 );
+                update_option( LGD_Admin::OPTION_HELP_TEXTS, array( 'business_name' => 'Custom help text' ) );
+
+                $tooltip = self::$plugin->get_help_tooltip( 'business_name' );
+
+                $this->assertIsArray( $tooltip );
+                $this->assertArrayHasKey( 'html', $tooltip );
+                $this->assertArrayHasKey( 'id', $tooltip );
+                $this->assertNotEmpty( $tooltip['id'] );
+                $this->assertStringContainsString( 'Custom help text', $tooltip['html'] );
+        }
+
+        /**
+         * Support callouts should include the configured message and link.
+         */
+        public function test_support_callout_outputs_message_and_link() {
+                update_option( LGD_Admin::OPTION_SUPPORT_MESSAGE, 'Need help?' );
+                update_option( LGD_Admin::OPTION_SUPPORT_LINK, 'https://example.com/support' );
+
+                $html = self::$plugin->get_support_callout_html();
+
+                $this->assertStringContainsString( 'Need help?', $html );
+                $this->assertStringContainsString( 'https://example.com/support', $html );
+        }
 }

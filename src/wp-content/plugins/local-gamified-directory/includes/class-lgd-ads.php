@@ -412,44 +412,44 @@ class LGD_Ads {
 	        ?>
 	        <form class="lgd-form" method="post" enctype="multipart/form-data">
 	                <?php wp_nonce_field( 'lgd_submit_ad', 'lgd_ad_submission_nonce' ); ?>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_ad_title"><?php esc_html_e( 'Ad Title', 'local-gamified-directory' ); ?></label>
-	                        <input type="text" id="lgd_ad_title" name="lgd_ad_title" required />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_ad_content"><?php esc_html_e( 'Ad Content', 'local-gamified-directory' ); ?></label>
-	                        <textarea id="lgd_ad_content" name="lgd_ad_content" rows="4" required></textarea>
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_ad_url"><?php esc_html_e( 'Destination URL', 'local-gamified-directory' ); ?></label>
-	                        <input type="url" id="lgd_ad_url" name="lgd_ad_url" placeholder="https://" />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_ad_category"><?php esc_html_e( 'Target Category', 'local-gamified-directory' ); ?></label>
-	                        <select id="lgd_ad_category" name="lgd_ad_category">
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_ad_title', __( 'Ad Title', 'local-gamified-directory' ), 'ad_title' ); ?>
+                                <input type="text" id="lgd_ad_title" name="lgd_ad_title" required<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_ad_content', __( 'Ad Content', 'local-gamified-directory' ), 'ad_content' ); ?>
+                                <textarea id="lgd_ad_content" name="lgd_ad_content" rows="4" required<?php $this->print_describedby_attribute( $help_id ); ?>></textarea>
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_ad_url', __( 'Destination URL', 'local-gamified-directory' ), 'ad_url' ); ?>
+                                <input type="url" id="lgd_ad_url" name="lgd_ad_url" placeholder="https://"<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_ad_category', __( 'Target Category', 'local-gamified-directory' ), 'ad_category' ); ?>
+                                <select id="lgd_ad_category" name="lgd_ad_category"<?php $this->print_describedby_attribute( $help_id ); ?>>
 	                                <option value="0"><?php esc_html_e( 'All Categories', 'local-gamified-directory' ); ?></option>
 	                                <?php foreach ( $categories as $category ) : ?>
 	                                        <option value="<?php echo esc_attr( $category->term_id ); ?>"><?php echo esc_html( $category->name ); ?></option>
 	                                <?php endforeach; ?>
 	                        </select>
 	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_ad_region"><?php esc_html_e( 'Target Region', 'local-gamified-directory' ); ?></label>
-	                        <select id="lgd_ad_region" name="lgd_ad_region">
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_ad_region', __( 'Target Region', 'local-gamified-directory' ), 'ad_region' ); ?>
+                                <select id="lgd_ad_region" name="lgd_ad_region"<?php $this->print_describedby_attribute( $help_id ); ?>>
 	                                <option value="0"><?php esc_html_e( 'All Regions', 'local-gamified-directory' ); ?></option>
 	                                <?php foreach ( $regions as $region ) : ?>
 	                                        <option value="<?php echo esc_attr( $region->term_id ); ?>"><?php echo esc_html( $region->name ); ?></option>
 	                                <?php endforeach; ?>
 	                        </select>
 	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_ad_duration"><?php esc_html_e( 'Duration (days)', 'local-gamified-directory' ); ?></label>
-	                        <input type="number" id="lgd_ad_duration" name="lgd_ad_duration" min="1" value="7" />
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_ad_duration', __( 'Duration (days)', 'local-gamified-directory' ), 'ad_duration' ); ?>
+                                <input type="number" id="lgd_ad_duration" name="lgd_ad_duration" min="1" value="7"<?php $this->print_describedby_attribute( $help_id ); ?> />
 	                        <p class="description"><?php echo esc_html( sprintf( __( 'Each day costs %d tokens.', 'local-gamified-directory' ), $cost_per_day ) ); ?></p>
 	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_ad_image"><?php esc_html_e( 'Ad Image', 'local-gamified-directory' ); ?></label>
-	                        <input type="file" id="lgd_ad_image" name="lgd_ad_image" accept="image/*" />
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_ad_image', __( 'Ad Image', 'local-gamified-directory' ), 'ad_image' ); ?>
+                                <input type="file" id="lgd_ad_image" name="lgd_ad_image" accept="image/*"<?php $this->print_describedby_attribute( $help_id ); ?> />
 	                </div>
 	                <div class="lgd-form__actions">
 	                        <button type="submit" class="lgd-button lgd-button--primary"<?php echo $this->get_tracking_attributes( 'ad_submit', 'lgd_ad' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Create Ad', 'local-gamified-directory' ); ?></button>
@@ -680,16 +680,66 @@ class LGD_Ads {
 	        return empty( $compiled ) ? '' : ' ' . implode( ' ', $compiled );
 	}
 
-	/**
-	 * Wrap ad output in a container.
-	 *
-	 * @param string $html HTML markup.
-	 *
-	 * @return string
-	 */
-	private function wrap_output( $html ) {
-	        return sprintf( '<div class="lgd-form-wrapper">%s</div>', $html );
-	}
+        /**
+         * Render a form label with optional contextual help.
+         *
+         * @param string $for      Field ID.
+         * @param string $label    Label text.
+         * @param string $help_key Help context key.
+         *
+         * @return string Tooltip ID when available.
+         */
+        private function render_field_header( $for, $label, $help_key = '' ) {
+                $tooltip = array(
+                        'id'   => '',
+                        'html' => '',
+                );
+
+                if ( ! empty( $help_key ) ) {
+                        $tooltip = $this->plugin->get_help_tooltip( $help_key );
+                }
+
+                echo '<div class="lgd-form__label">';
+                printf( '<label for="%1$s">%2$s</label>', esc_attr( $for ), esc_html( $label ) );
+
+                if ( ! empty( $tooltip['html'] ) ) {
+                        echo $tooltip['html']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                }
+
+                echo '</div>';
+
+                return ! empty( $tooltip['id'] ) ? $tooltip['id'] : '';
+        }
+
+        /**
+         * Print an aria-describedby attribute when needed.
+         *
+         * @param string $id Tooltip ID.
+         */
+        private function print_describedby_attribute( $id ) {
+                if ( empty( $id ) ) {
+                        return;
+                }
+
+                echo ' aria-describedby="' . esc_attr( $id ) . '"';
+        }
+
+        /**
+         * Wrap ad output in a container.
+         *
+         * @param string $html HTML markup.
+         *
+         * @return string
+         */
+        private function wrap_output( $html ) {
+                $support = $this->plugin->get_support_callout_html();
+
+                if ( ! empty( $support ) ) {
+                        $html .= $support;
+                }
+
+                return sprintf( '<div class="lgd-form-wrapper">%s</div>', $html );
+        }
 
 	/**
 	 * Activation tasks for the ads module.

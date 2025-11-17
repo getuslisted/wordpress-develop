@@ -21,6 +21,7 @@ Local Gamified Directory equips WordPress sites with everything needed to run a 
 * **Token-based advertising** so businesses can spend their points on sponsored placements targeted by category or region.
 * **PayPal subscriptions** to deliver premium, ad-free listings, monthly token allowances, and other perks.
 * **Minimalist, responsive front-end forms** for submitting businesses, classifieds, ads, and for managing user dashboards.
+* **Contextual guidance and admin controls** with configurable tooltips, support callouts, and feature toggles that reduce support requests and keep the community safe.
 * **Automated notifications** that alert admins and owners about new submissions, claim requests, approvals, and expiring classifieds.
 
 The plugin is organized into dedicated modules for front-end forms, gamification, ads, and subscriptions so you can easily extend or override specific functionality. All output uses semantic markup and ships with a lightweight stylesheet to get you started.

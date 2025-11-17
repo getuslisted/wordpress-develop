@@ -126,6 +126,13 @@ if ( ! class_exists( 'Local_Gamified_Directory' ) ) {
                  */
                 private $subscriptions = null;
 
+                /**
+                 * Counter used to generate unique help identifiers.
+                 *
+                 * @var int
+                 */
+                private $help_counter = 0;
+
 		/**
 		* Retrieve the singleton instance.
 		*
@@ -441,6 +448,391 @@ if ( ! class_exists( 'Local_Gamified_Directory' ) ) {
                 public function update_setting( $key, $value ) {
                         update_option( 'lgd_' . $key, $value );
                 }
+
+        /**
+         * Retrieve contextual help definitions keyed by form element.
+         *
+         * @return array
+         */
+        public function get_help_contexts() {
+                $contexts = array(
+                        'business_claim_listing' => array(
+                                'label'       => __( 'Business claim selector', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed next to the claim dropdown on the business submission form.', 'local-gamified-directory' ),
+                                'default'     => __( 'Choose an existing listing if you are claiming it. Leave this set to “Create a new listing” for brand-new businesses.', 'local-gamified-directory' ),
+                        ),
+                        'business_claim_notes' => array(
+                                'label'       => __( 'Claim verification notes', 'local-gamified-directory' ),
+                                'description' => __( 'Shown alongside the verification textarea on the business submission form.', 'local-gamified-directory' ),
+                                'default'     => __( 'Provide ownership details such as a business email or phone number so our team can verify your request quickly.', 'local-gamified-directory' ),
+                        ),
+                        'business_name' => array(
+                                'label'       => __( 'Business name', 'local-gamified-directory' ),
+                                'description' => __( 'Appears beside the Business Name field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Enter the exact business name customers recognise. This is displayed on your public profile.', 'local-gamified-directory' ),
+                        ),
+                        'business_description' => array(
+                                'label'       => __( 'Business description', 'local-gamified-directory' ),
+                                'description' => __( 'Appears beside the description textarea on the business form.', 'local-gamified-directory' ),
+                                'default'     => __( 'Share a concise overview of your services, specialties, or mission to help visitors understand what you offer.', 'local-gamified-directory' ),
+                        ),
+                        'business_address' => array(
+                                'label'       => __( 'Business address', 'local-gamified-directory' ),
+                                'description' => __( 'Shown next to the address field on the business form.', 'local-gamified-directory' ),
+                                'default'     => __( 'Provide the street address visitors should use to find your location. Include suite numbers if applicable.', 'local-gamified-directory' ),
+                        ),
+                        'business_phone' => array(
+                                'label'       => __( 'Business phone', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed by the phone input on the business form.', 'local-gamified-directory' ),
+                                'default'     => __( 'List the primary phone number your team monitors so customers can contact you quickly.', 'local-gamified-directory' ),
+                        ),
+                        'business_email' => array(
+                                'label'       => __( 'Business contact email', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed by the contact email field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Use an inbox that is actively monitored for customer enquiries and listing notifications.', 'local-gamified-directory' ),
+                        ),
+                        'business_hours' => array(
+                                'label'       => __( 'Operating hours', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed beside the hours textarea.', 'local-gamified-directory' ),
+                                'default'     => __( 'List your opening hours or appointment times. Mention holiday or seasonal changes if they apply.', 'local-gamified-directory' ),
+                        ),
+                        'business_place_id' => array(
+                                'label'       => __( 'Google Place ID', 'local-gamified-directory' ),
+                                'description' => __( 'Appears beside the Google Place ID field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Paste the Google Place ID so we can connect maps, reviews, and search results to this profile.', 'local-gamified-directory' ),
+                        ),
+                        'business_category' => array(
+                                'label'       => __( 'Business categories', 'local-gamified-directory' ),
+                                'description' => __( 'Shown near the category multi-select.', 'local-gamified-directory' ),
+                                'default'     => __( 'Choose every category that accurately describes your business so it appears in the right searches.', 'local-gamified-directory' ),
+                        ),
+                        'business_region' => array(
+                                'label'       => __( 'Business regions', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed next to the region selector.', 'local-gamified-directory' ),
+                                'default'     => __( 'Select the neighbourhoods or regions you serve to help locals find you faster.', 'local-gamified-directory' ),
+                        ),
+                        'business_logo' => array(
+                                'label'       => __( 'Business logo upload', 'local-gamified-directory' ),
+                                'description' => __( 'Appears by the logo upload field on the business form.', 'local-gamified-directory' ),
+                                'default'     => __( 'Upload a clear PNG or JPG logo. Square images display best across the directory.', 'local-gamified-directory' ),
+                        ),
+                        'classified_title' => array(
+                                'label'       => __( 'Classified title', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed beside the classified title field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Write a short, searchable title that summarises what you are offering or requesting.', 'local-gamified-directory' ),
+                        ),
+                        'classified_description' => array(
+                                'label'       => __( 'Classified description', 'local-gamified-directory' ),
+                                'description' => __( 'Appears next to the classified description textarea.', 'local-gamified-directory' ),
+                                'default'     => __( 'Describe the item or opportunity, noting condition, inclusions, and any important terms.', 'local-gamified-directory' ),
+                        ),
+                        'classified_category' => array(
+                                'label'       => __( 'Classified categories', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed next to the classifieds category selector.', 'local-gamified-directory' ),
+                                'default'     => __( 'Pick the categories that best match your listing so it appears to the right audience.', 'local-gamified-directory' ),
+                        ),
+                        'classified_price' => array(
+                                'label'       => __( 'Classified price', 'local-gamified-directory' ),
+                                'description' => __( 'Appears by the price input.', 'local-gamified-directory' ),
+                                'default'     => __( 'Enter your price or mention if it is free or negotiable to set expectations.', 'local-gamified-directory' ),
+                        ),
+                        'classified_location' => array(
+                                'label'       => __( 'Classified location', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed next to the location field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Share where the item is located or the area you can service or deliver to.', 'local-gamified-directory' ),
+                        ),
+                        'classified_contact' => array(
+                                'label'       => __( 'Classified contact method', 'local-gamified-directory' ),
+                                'description' => __( 'Appears by the contact field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Tell interested people how to reach you—email, phone, or a preferred messaging app.', 'local-gamified-directory' ),
+                        ),
+                        'classified_image' => array(
+                                'label'       => __( 'Classified image upload', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed beside the classified image field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Upload a bright, well-lit image. Listings with photos receive more views and enquiries.', 'local-gamified-directory' ),
+                        ),
+                        'dashboard_summary' => array(
+                                'label'       => __( 'Dashboard summary panel', 'local-gamified-directory' ),
+                                'description' => __( 'Shown next to the Account Summary heading on the user dashboard.', 'local-gamified-directory' ),
+                                'default'     => __( 'Keep an eye on your points, badges, and premium status to see how participation is rewarded.', 'local-gamified-directory' ),
+                        ),
+                        'dashboard_businesses' => array(
+                                'label'       => __( 'Dashboard business listings section', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed near the business listings dashboard section heading.', 'local-gamified-directory' ),
+                                'default'     => __( 'Review the status of each listing, edit details, or launch new promotions from here.', 'local-gamified-directory' ),
+                        ),
+                        'dashboard_classifieds' => array(
+                                'label'       => __( 'Dashboard classifieds section', 'local-gamified-directory' ),
+                                'description' => __( 'Shown near the classifieds dashboard heading.', 'local-gamified-directory' ),
+                                'default'     => __( 'Manage active and expired classifieds, renew successful posts, or mark items as sold.', 'local-gamified-directory' ),
+                        ),
+                        'dashboard_ads' => array(
+                                'label'       => __( 'Dashboard ads section', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed next to the sponsored ads heading in the dashboard.', 'local-gamified-directory' ),
+                                'default'     => __( 'Track when each sponsored ad runs and how many tokens you invested in the campaign.', 'local-gamified-directory' ),
+                        ),
+                        'ad_title' => array(
+                                'label'       => __( 'Ad title', 'local-gamified-directory' ),
+                                'description' => __( 'Appears by the ad title field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Give the ad a headline that attracts attention and helps you identify the campaign later.', 'local-gamified-directory' ),
+                        ),
+                        'ad_content' => array(
+                                'label'       => __( 'Ad content', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed by the ad content textarea.', 'local-gamified-directory' ),
+                                'default'     => __( 'Write a short message that highlights your offer and includes a clear call to action.', 'local-gamified-directory' ),
+                        ),
+                        'ad_url' => array(
+                                'label'       => __( 'Ad destination URL', 'local-gamified-directory' ),
+                                'description' => __( 'Appears beside the ad URL field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Paste the link people should visit when clicking your ad. It can be your listing or any landing page.', 'local-gamified-directory' ),
+                        ),
+                        'ad_category' => array(
+                                'label'       => __( 'Ad target category', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed by the ad category selector.', 'local-gamified-directory' ),
+                                'default'     => __( 'Target a specific business category for focused exposure or choose all categories for a wider reach.', 'local-gamified-directory' ),
+                        ),
+                        'ad_region' => array(
+                                'label'       => __( 'Ad target region', 'local-gamified-directory' ),
+                                'description' => __( 'Appears next to the ad region selector.', 'local-gamified-directory' ),
+                                'default'     => __( 'Limit your campaign to certain regions if you only serve specific neighbourhoods.', 'local-gamified-directory' ),
+                        ),
+                        'ad_duration' => array(
+                                'label'       => __( 'Ad duration', 'local-gamified-directory' ),
+                                'description' => __( 'Displayed next to the duration input.', 'local-gamified-directory' ),
+                                'default'     => __( 'Choose how many days the ad should run. Tokens are deducted based on the duration you select.', 'local-gamified-directory' ),
+                        ),
+                        'ad_image' => array(
+                                'label'       => __( 'Ad image upload', 'local-gamified-directory' ),
+                                'description' => __( 'Appears by the ad image field.', 'local-gamified-directory' ),
+                                'default'     => __( 'Upload a high-quality promotional image to boost engagement. Landscape images work best.', 'local-gamified-directory' ),
+                        ),
+                );
+
+                /**
+                 * Filter the contextual help definitions.
+                 *
+                 * @since 0.1.0
+                 *
+                 * @param array $contexts Registered help contexts.
+                 */
+                return apply_filters( 'lgd_help_contexts', $contexts );
+        }
+
+        /**
+         * Retrieve default help text keyed by context.
+         *
+         * @return array
+         */
+        public function get_default_help_texts() {
+                $defaults = array();
+
+                foreach ( $this->get_help_contexts() as $key => $context ) {
+                        $defaults[ $key ] = isset( $context['default'] ) ? $context['default'] : '';
+                }
+
+                return $defaults;
+        }
+
+        /**
+         * Retrieve effective help text values including overrides.
+         *
+         * @return array
+         */
+        public function get_help_texts() {
+                $texts   = $this->get_default_help_texts();
+                $stored  = get_option( LGD_Admin::OPTION_HELP_TEXTS, array() );
+
+                if ( is_array( $stored ) ) {
+                        foreach ( $stored as $key => $value ) {
+                                if ( ! array_key_exists( $key, $texts ) ) {
+                                        continue;
+                                }
+
+                                $value = is_string( $value ) ? trim( $value ) : '';
+
+                                if ( '' === $value ) {
+                                        continue;
+                                }
+
+                                $texts[ $key ] = wp_kses_post( $value );
+                        }
+                }
+
+                /**
+                 * Filter the resolved help text values.
+                 *
+                 * @since 0.1.0
+                 *
+                 * @param array $texts Help text keyed by context.
+                 */
+                return apply_filters( 'lgd_help_texts', $texts );
+        }
+
+        /**
+         * Retrieve a single help text value by key.
+         *
+         * @param string $key Help context key.
+         * @return string
+         */
+        public function get_help_text( $key ) {
+                $texts = $this->get_help_texts();
+
+                return isset( $texts[ $key ] ) ? $texts[ $key ] : '';
+        }
+
+        /**
+         * Determine whether contextual help is enabled.
+         *
+         * @return bool
+         */
+        public function is_help_enabled() {
+                $enabled = (bool) get_option( LGD_Admin::OPTION_HELP_ENABLED, 1 );
+
+                /**
+                 * Filter whether contextual help is active.
+                 *
+                 * @since 0.1.0
+                 *
+                 * @param bool $enabled True when contextual help should display.
+                 */
+                return (bool) apply_filters( 'lgd_help_enabled', $enabled );
+        }
+
+        /**
+         * Build tooltip markup for a contextual help key.
+         *
+         * @param string $key Help context key.
+         * @return array{id:string,html:string}
+         */
+        public function get_help_tooltip( $key ) {
+                $empty = array(
+                        'id'   => '',
+                        'html' => '',
+                );
+
+                if ( ! $this->is_help_enabled() ) {
+                        return $empty;
+                }
+
+                $text = $this->get_help_text( $key );
+
+                if ( '' === $text || '' === trim( wp_strip_all_tags( $text ) ) ) {
+                        return $empty;
+                }
+
+                $this->help_counter++;
+                $id    = 'lgd-help-' . sanitize_html_class( $key ) . '-' . $this->help_counter;
+                $html  = sprintf(
+                        '<span class="lgd-help" data-lgd-open="false"><button type="button" class="lgd-help__icon" aria-expanded="false" aria-controls="%1$s"><span aria-hidden="true">?</span><span class="lgd-screen-reader-text">%2$s</span></button><span class="lgd-help__tooltip" role="tooltip" id="%1$s">%3$s</span></span>',
+                        esc_attr( $id ),
+                        esc_html__( 'Toggle help information', 'local-gamified-directory' ),
+                        wp_kses_post( $text )
+                );
+
+                /**
+                 * Filter the rendered tooltip HTML for a help context.
+                 *
+                 * @since 0.1.0
+                 *
+                 * @param string $html Tooltip markup.
+                 * @param string $key  Help context key.
+                 * @param string $text Help text used inside the tooltip.
+                 * @param string $id   Tooltip DOM id attribute.
+                 */
+                $html = apply_filters( 'lgd_help_tooltip_html', $html, $key, $text, $id );
+
+                /**
+                 * Filter the tooltip payload returned for a help context.
+                 *
+                 * @since 0.1.0
+                 *
+                 * @param array  $tooltip Tooltip data array with id/html keys.
+                 * @param string $key     Help context key.
+                 * @param string $text    Help text used inside the tooltip.
+                 */
+                return apply_filters(
+                        'lgd_help_tooltip',
+                        array(
+                                'id'   => $id,
+                                'html' => $html,
+                        ),
+                        $key,
+                        $text
+                );
+        }
+
+        /**
+         * Retrieve the configured support message.
+         *
+         * @return string
+         */
+        public function get_support_message() {
+                $message = get_option( LGD_Admin::OPTION_SUPPORT_MESSAGE, '' );
+                $message = is_string( $message ) ? trim( $message ) : '';
+
+                if ( '' === $message ) {
+                        return '';
+                }
+
+                return $message;
+        }
+
+        /**
+         * Retrieve the configured support link.
+         *
+         * @return string
+         */
+        public function get_support_link() {
+                $link = get_option( LGD_Admin::OPTION_SUPPORT_LINK, '' );
+                $link = is_string( $link ) ? trim( $link ) : '';
+
+                if ( '' === $link ) {
+                        return '';
+                }
+
+                return esc_url_raw( $link );
+        }
+
+        /**
+         * Generate the HTML support callout shown beneath forms.
+         *
+         * @return string
+         */
+        public function get_support_callout_html() {
+                $message = $this->get_support_message();
+                $link    = $this->get_support_link();
+
+                if ( '' === $message && '' === $link ) {
+                        return '';
+                }
+
+                $parts = array();
+
+                if ( '' !== $message ) {
+                        $parts[] = '<p class="lgd-support-callout__text">' . esc_html( $message ) . '</p>';
+                }
+
+                if ( '' !== $link ) {
+                        $parts[] = '<p class="lgd-support-callout__action"><a class="lgd-support-callout__link" href="' . esc_url( $link ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Open help center', 'local-gamified-directory' ) . '</a></p>';
+                }
+
+                if ( empty( $parts ) ) {
+                        return '';
+                }
+
+                $html = '<div class="lgd-support-callout">' . implode( '', $parts ) . '</div>';
+
+                /**
+                 * Filter the support callout markup.
+                 *
+                 * @since 0.1.0
+                 *
+                 * @param string $html    Rendered support callout HTML.
+                 * @param string $message Support message text.
+                 * @param string $link    Support link URL.
+                 */
+                return apply_filters( 'lgd_support_callout_html', $html, $message, $link );
+        }
 
                 /**
                  * Send a notification to the site administrator.

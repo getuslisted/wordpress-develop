@@ -32,15 +32,19 @@ $wpdb->query(
 );
 
 $option_keys = array(
-	'lgd_feature_flags',
-	'lgd_feature_role_map',
-	'lgd_abuse_threshold',
-	'lgd_abuse_window_minutes',
-	'lgd_activity_retention_days',
-	'lgd_social_google_client_id',
-	'lgd_social_google_client_secret',
-	'lgd_social_facebook_app_id',
-	'lgd_social_facebook_app_secret',
+        'lgd_feature_flags',
+        'lgd_feature_role_map',
+        'lgd_abuse_threshold',
+        'lgd_abuse_window_minutes',
+        'lgd_activity_retention_days',
+        'lgd_help_texts',
+        'lgd_help_enabled',
+        'lgd_support_message',
+        'lgd_support_link',
+        'lgd_social_google_client_id',
+        'lgd_social_google_client_secret',
+        'lgd_social_facebook_app_id',
+        'lgd_social_facebook_app_secret',
 );
 
 foreach ( $option_keys as $option_key ) {

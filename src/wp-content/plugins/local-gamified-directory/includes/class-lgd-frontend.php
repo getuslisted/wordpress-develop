@@ -613,10 +613,10 @@ Thank you,
 	        <form class="lgd-form" method="post" enctype="multipart/form-data">
 	                <?php wp_nonce_field( 'lgd_submit_business', 'lgd_business_submission_nonce' ); ?>
 	                <?php $this->render_messages( $messages ); ?>
-	                <?php if ( ! empty( $claimable ) ) : ?>
-	                        <div class="lgd-form__field">
-	                                <label for="lgd_business_claim_listing"><?php esc_html_e( 'Claim an Existing Listing', 'local-gamified-directory' ); ?></label>
-	                                <select id="lgd_business_claim_listing" name="lgd_business_claim_listing">
+                        <?php if ( ! empty( $claimable ) ) : ?>
+                                <div class="lgd-form__field">
+                                        <?php $help_id = $this->render_field_header( 'lgd_business_claim_listing', __( 'Claim an Existing Listing', 'local-gamified-directory' ), 'business_claim_listing' ); ?>
+                                        <select id="lgd_business_claim_listing" name="lgd_business_claim_listing"<?php $this->print_describedby_attribute( $help_id ); ?>>
 	                                        <option value=""><?php esc_html_e( '— Create a new listing —', 'local-gamified-directory' ); ?></option>
 	                                        <?php foreach ( $claimable as $claim_post ) : ?>
 	                                                <option value="<?php echo esc_attr( $claim_post->ID ); ?>"><?php echo esc_html( $claim_post->post_title ); ?></option>
@@ -624,58 +624,58 @@ Thank you,
 	                                </select>
 	                                <p class="lgd-form__help"><?php esc_html_e( 'Select a published listing to request ownership. Leave this blank to add a new business.', 'local-gamified-directory' ); ?></p>
 	                        </div>
-	                        <div class="lgd-form__field">
-	                                <label for="lgd_business_claim_notes"><?php esc_html_e( 'Verification Details', 'local-gamified-directory' ); ?></label>
-	                                <textarea id="lgd_business_claim_notes" name="lgd_business_claim_notes" rows="4" placeholder="<?php esc_attr_e( 'Share information that helps verify your ownership, such as business email or phone number.', 'local-gamified-directory' ); ?>"></textarea>
+                                <div class="lgd-form__field">
+                                        <?php $help_id = $this->render_field_header( 'lgd_business_claim_notes', __( 'Verification Details', 'local-gamified-directory' ), 'business_claim_notes' ); ?>
+                                        <textarea id="lgd_business_claim_notes" name="lgd_business_claim_notes" rows="4" placeholder="<?php esc_attr_e( 'Share information that helps verify your ownership, such as business email or phone number.', 'local-gamified-directory' ); ?>"<?php $this->print_describedby_attribute( $help_id ); ?>></textarea>
 	                        </div>
 	                <?php endif; ?>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_name"><?php esc_html_e( 'Business Name', 'local-gamified-directory' ); ?></label>
-	                        <input type="text" id="lgd_business_name" name="lgd_business_name" />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_description"><?php esc_html_e( 'Description', 'local-gamified-directory' ); ?></label>
-	                        <textarea id="lgd_business_description" name="lgd_business_description" rows="5"></textarea>
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_address"><?php esc_html_e( 'Address', 'local-gamified-directory' ); ?></label>
-	                        <input type="text" id="lgd_business_address" name="lgd_business_address" />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_phone"><?php esc_html_e( 'Phone', 'local-gamified-directory' ); ?></label>
-	                        <input type="text" id="lgd_business_phone" name="lgd_business_phone" />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_email"><?php esc_html_e( 'Contact Email', 'local-gamified-directory' ); ?></label>
-	                        <input type="email" id="lgd_business_email" name="lgd_business_email" />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_hours"><?php esc_html_e( 'Operating Hours', 'local-gamified-directory' ); ?></label>
-	                        <textarea id="lgd_business_hours" name="lgd_business_hours" rows="3"></textarea>
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_place_id"><?php esc_html_e( 'Google Place ID', 'local-gamified-directory' ); ?></label>
-	                        <input type="text" id="lgd_business_place_id" name="lgd_business_place_id" />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_category"><?php esc_html_e( 'Business Category', 'local-gamified-directory' ); ?></label>
-	                        <select id="lgd_business_category" name="lgd_business_category[]" multiple>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_name', __( 'Business Name', 'local-gamified-directory' ), 'business_name' ); ?>
+                                <input type="text" id="lgd_business_name" name="lgd_business_name"<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_description', __( 'Description', 'local-gamified-directory' ), 'business_description' ); ?>
+                                <textarea id="lgd_business_description" name="lgd_business_description" rows="5"<?php $this->print_describedby_attribute( $help_id ); ?>></textarea>
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_address', __( 'Address', 'local-gamified-directory' ), 'business_address' ); ?>
+                                <input type="text" id="lgd_business_address" name="lgd_business_address"<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_phone', __( 'Phone', 'local-gamified-directory' ), 'business_phone' ); ?>
+                                <input type="text" id="lgd_business_phone" name="lgd_business_phone"<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_email', __( 'Contact Email', 'local-gamified-directory' ), 'business_email' ); ?>
+                                <input type="email" id="lgd_business_email" name="lgd_business_email"<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_hours', __( 'Operating Hours', 'local-gamified-directory' ), 'business_hours' ); ?>
+                                <textarea id="lgd_business_hours" name="lgd_business_hours" rows="3"<?php $this->print_describedby_attribute( $help_id ); ?>></textarea>
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_place_id', __( 'Google Place ID', 'local-gamified-directory' ), 'business_place_id' ); ?>
+                                <input type="text" id="lgd_business_place_id" name="lgd_business_place_id"<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_category', __( 'Business Category', 'local-gamified-directory' ), 'business_category' ); ?>
+                                <select id="lgd_business_category" name="lgd_business_category[]" multiple<?php $this->print_describedby_attribute( $help_id ); ?>>
 	                                <?php foreach ( $categories as $category ) : ?>
 	                                        <option value="<?php echo esc_attr( $category->term_id ); ?>"><?php echo esc_html( $category->name ); ?></option>
 	                                <?php endforeach; ?>
 	                        </select>
 	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_region"><?php esc_html_e( 'Business Region', 'local-gamified-directory' ); ?></label>
-	                        <select id="lgd_business_region" name="lgd_business_region[]" multiple>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_region', __( 'Business Region', 'local-gamified-directory' ), 'business_region' ); ?>
+                                <select id="lgd_business_region" name="lgd_business_region[]" multiple<?php $this->print_describedby_attribute( $help_id ); ?>>
 	                                <?php foreach ( $regions as $region ) : ?>
 	                                        <option value="<?php echo esc_attr( $region->term_id ); ?>"><?php echo esc_html( $region->name ); ?></option>
 	                                <?php endforeach; ?>
 	                        </select>
 	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_business_logo"><?php esc_html_e( 'Business Logo', 'local-gamified-directory' ); ?></label>
-	                        <input type="file" id="lgd_business_logo" name="lgd_business_logo" accept="image/*" />
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_business_logo', __( 'Business Logo', 'local-gamified-directory' ), 'business_logo' ); ?>
+                                <input type="file" id="lgd_business_logo" name="lgd_business_logo" accept="image/*"<?php $this->print_describedby_attribute( $help_id ); ?> />
 	                </div>
 	                <div class="lgd-form__actions">
 	                        <button type="submit" class="lgd-button lgd-button--primary"<?php echo $this->get_tracking_attributes( 'business_submit', 'business_listing' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Submit Business', 'local-gamified-directory' ); ?></button>
@@ -729,37 +729,37 @@ Thank you,
 	        <form class="lgd-form" method="post" enctype="multipart/form-data">
 	                <?php wp_nonce_field( 'lgd_submit_classified', 'lgd_classified_submission_nonce' ); ?>
 	                <?php $this->render_messages( $messages ); ?>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_classified_title"><?php esc_html_e( 'Title', 'local-gamified-directory' ); ?></label>
-	                        <input type="text" id="lgd_classified_title" name="lgd_classified_title" required />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_classified_description"><?php esc_html_e( 'Description', 'local-gamified-directory' ); ?></label>
-	                        <textarea id="lgd_classified_description" name="lgd_classified_description" rows="5" required></textarea>
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_classified_category"><?php esc_html_e( 'Category', 'local-gamified-directory' ); ?></label>
-	                        <select id="lgd_classified_category" name="lgd_classified_category[]" multiple>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_classified_title', __( 'Title', 'local-gamified-directory' ), 'classified_title' ); ?>
+                                <input type="text" id="lgd_classified_title" name="lgd_classified_title" required<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_classified_description', __( 'Description', 'local-gamified-directory' ), 'classified_description' ); ?>
+                                <textarea id="lgd_classified_description" name="lgd_classified_description" rows="5" required<?php $this->print_describedby_attribute( $help_id ); ?>></textarea>
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_classified_category', __( 'Category', 'local-gamified-directory' ), 'classified_category' ); ?>
+                                <select id="lgd_classified_category" name="lgd_classified_category[]" multiple<?php $this->print_describedby_attribute( $help_id ); ?>>
 	                                <?php foreach ( $categories as $category ) : ?>
 	                                        <option value="<?php echo esc_attr( $category->term_id ); ?>"><?php echo esc_html( $category->name ); ?></option>
 	                                <?php endforeach; ?>
 	                        </select>
 	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_classified_price"><?php esc_html_e( 'Price', 'local-gamified-directory' ); ?></label>
-	                        <input type="text" id="lgd_classified_price" name="lgd_classified_price" />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_classified_location"><?php esc_html_e( 'Location', 'local-gamified-directory' ); ?></label>
-	                        <input type="text" id="lgd_classified_location" name="lgd_classified_location" />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_classified_contact"><?php esc_html_e( 'Contact Method', 'local-gamified-directory' ); ?></label>
-	                        <input type="text" id="lgd_classified_contact" name="lgd_classified_contact" />
-	                </div>
-	                <div class="lgd-form__field">
-	                        <label for="lgd_classified_image"><?php esc_html_e( 'Featured Image', 'local-gamified-directory' ); ?></label>
-	                        <input type="file" id="lgd_classified_image" name="lgd_classified_image" accept="image/*" />
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_classified_price', __( 'Price', 'local-gamified-directory' ), 'classified_price' ); ?>
+                                <input type="text" id="lgd_classified_price" name="lgd_classified_price"<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_classified_location', __( 'Location', 'local-gamified-directory' ), 'classified_location' ); ?>
+                                <input type="text" id="lgd_classified_location" name="lgd_classified_location"<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_classified_contact', __( 'Contact Method', 'local-gamified-directory' ), 'classified_contact' ); ?>
+                                <input type="text" id="lgd_classified_contact" name="lgd_classified_contact"<?php $this->print_describedby_attribute( $help_id ); ?> />
+                        </div>
+                        <div class="lgd-form__field">
+                                <?php $help_id = $this->render_field_header( 'lgd_classified_image', __( 'Featured Image', 'local-gamified-directory' ), 'classified_image' ); ?>
+                                <input type="file" id="lgd_classified_image" name="lgd_classified_image" accept="image/*"<?php $this->print_describedby_attribute( $help_id ); ?> />
 	                </div>
 	                <div class="lgd-form__actions">
 	                        <button type="submit" class="lgd-button lgd-button--primary"<?php echo $this->get_tracking_attributes( 'classified_submit', 'classified_listing' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Submit Classified', 'local-gamified-directory' ); ?></button>
@@ -810,9 +810,9 @@ Thank you,
 
 	        ob_start();
 	        ?>
-	        <div class="lgd-dashboard">
-	                <section class="lgd-dashboard__summary">
-	                        <h2><?php esc_html_e( 'Account Summary', 'local-gamified-directory' ); ?></h2>
+                <div class="lgd-dashboard">
+                        <section class="lgd-dashboard__summary">
+                                <?php $this->render_heading_with_help( __( 'Account Summary', 'local-gamified-directory' ), 'dashboard_summary' ); ?>
 	                        <p class="lgd-dashboard__stat">
 	                                <strong><?php esc_html_e( 'Points Balance:', 'local-gamified-directory' ); ?></strong>
 	                                <?php echo esc_html( number_format_i18n( $points ) ); ?>
@@ -834,8 +834,8 @@ Thank you,
 	                                <?php echo esc_html( $is_premium ? __( 'Active', 'local-gamified-directory' ) : __( 'Free Member', 'local-gamified-directory' ) ); ?>
 	                        </p>
 	                </section>
-	                <section class="lgd-dashboard__section">
-	                        <h2><?php esc_html_e( 'Your Business Listings', 'local-gamified-directory' ); ?></h2>
+                        <section class="lgd-dashboard__section">
+                                <?php $this->render_heading_with_help( __( 'Your Business Listings', 'local-gamified-directory' ), 'dashboard_businesses' ); ?>
 	                        <?php if ( empty( $businesses ) ) : ?>
 	                                <p><?php esc_html_e( 'You have not submitted any business listings yet.', 'local-gamified-directory' ); ?></p>
 	                        <?php else : ?>
@@ -867,8 +867,8 @@ Thank you,
 	                                </table>
 	                        <?php endif; ?>
 	                </section>
-	                <section class="lgd-dashboard__section">
-	                        <h2><?php esc_html_e( 'Your Classifieds', 'local-gamified-directory' ); ?></h2>
+                        <section class="lgd-dashboard__section">
+                                <?php $this->render_heading_with_help( __( 'Your Classifieds', 'local-gamified-directory' ), 'dashboard_classifieds' ); ?>
 	                        <?php if ( empty( $classifieds ) ) : ?>
 	                                <p><?php esc_html_e( 'You have not posted any classifieds yet.', 'local-gamified-directory' ); ?></p>
 	                        <?php else : ?>
@@ -904,8 +904,8 @@ Thank you,
 	                                </table>
 	                        <?php endif; ?>
 	                </section>
-	                <section class="lgd-dashboard__section">
-	                        <h2><?php esc_html_e( 'Your Sponsored Ads', 'local-gamified-directory' ); ?></h2>
+                        <section class="lgd-dashboard__section">
+                                <?php $this->render_heading_with_help( __( 'Your Sponsored Ads', 'local-gamified-directory' ), 'dashboard_ads' ); ?>
 	                        <?php if ( empty( $ads ) ) : ?>
 	                                <p><?php esc_html_e( 'You have not created any sponsored ads yet.', 'local-gamified-directory' ); ?></p>
 	                        <?php else : ?>
@@ -945,7 +945,8 @@ Thank you,
 	                        <h2><?php esc_html_e( 'Promote Your Business', 'local-gamified-directory' ); ?></h2>
 	                        <?php echo do_shortcode( '[lgd_ad_form]' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 	                </section>
-	        </div>
+                        <?php $this->output_support_callout(); ?>
+                </div>
 	        <?php
 	        return ob_get_clean();
 	}
@@ -1079,16 +1080,112 @@ Thank you,
 	        }
 	}
 
-	/**
-	 * Wrap form markup with a container.
-	 *
-	 * @param string $html Raw HTML output.
-	 *
-	 * @return string
-	 */
-	private function wrap_form_output( $html ) {
-	        return sprintf( '<div class="lgd-form-wrapper">%s</div>', $html );
-	}
+        /**
+         * Render a field label with optional contextual help.
+         *
+         * @param string $for      Field ID.
+         * @param string $label    Label text.
+         * @param string $help_key Help context key.
+         *
+         * @return string Tooltip ID when help content is available.
+         */
+        private function render_field_header( $for, $label, $help_key = '' ) {
+                $tooltip = array(
+                        'id'   => '',
+                        'html' => '',
+                );
+
+                if ( ! empty( $help_key ) ) {
+                        $tooltip = $this->plugin->get_help_tooltip( $help_key );
+                }
+
+                echo '<div class="lgd-form__label">';
+                printf( '<label for="%1$s">%2$s</label>', esc_attr( $for ), esc_html( $label ) );
+
+                if ( ! empty( $tooltip['html'] ) ) {
+                        echo $tooltip['html']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                }
+
+                echo '</div>';
+
+                return ! empty( $tooltip['id'] ) ? $tooltip['id'] : '';
+        }
+
+        /**
+         * Print an aria-describedby attribute when a help tooltip is present.
+         *
+         * @param string $id Tooltip ID.
+         */
+        private function print_describedby_attribute( $id ) {
+                if ( empty( $id ) ) {
+                        return;
+                }
+
+                echo ' aria-describedby="' . esc_attr( $id ) . '"';
+        }
+
+        /**
+         * Render a heading with contextual help icon.
+         *
+         * @param string $text     Heading text.
+         * @param string $help_key Help context key.
+         * @param string $tag      Heading tag to use.
+         */
+        private function render_heading_with_help( $text, $help_key, $tag = 'h2' ) {
+                $allowed = array( 'h2', 'h3', 'h4' );
+
+                if ( ! in_array( $tag, $allowed, true ) ) {
+                        $tag = 'h2';
+                }
+
+                $tooltip = array(
+                        'id'   => '',
+                        'html' => '',
+                );
+
+                if ( ! empty( $help_key ) ) {
+                        $tooltip = $this->plugin->get_help_tooltip( $help_key );
+                }
+
+                echo '<' . $tag . ' class="lgd-heading-with-help">';
+                echo esc_html( $text );
+
+                if ( ! empty( $tooltip['html'] ) ) {
+                        echo $tooltip['html']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                }
+
+                echo '</' . $tag . '>';
+        }
+
+        /**
+         * Output the configured support callout beneath complex screens.
+         */
+        private function output_support_callout() {
+                $support = $this->plugin->get_support_callout_html();
+
+                if ( empty( $support ) ) {
+                        return;
+                }
+
+                echo $support; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        }
+
+        /**
+         * Wrap form markup with a container.
+         *
+         * @param string $html Raw HTML output.
+         *
+         * @return string
+         */
+        private function wrap_form_output( $html ) {
+                $support = $this->plugin->get_support_callout_html();
+
+                if ( ! empty( $support ) ) {
+                        $html .= $support;
+                }
+
+                return sprintf( '<div class="lgd-form-wrapper">%s</div>', $html );
+        }
 
 	/**
 	 * Build activity tracking attributes when the feature is enabled.
