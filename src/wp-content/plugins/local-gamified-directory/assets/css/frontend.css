@@ -1,0 +1,311 @@
+.lgd-form-wrapper {
+        background: #ffffff;
+        border: 1px solid #e2e4e7;
+        border-radius: 6px;
+        padding: 24px;
+        margin: 24px 0;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.lgd-form__field {
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+}
+
+.lgd-form__field label {
+        font-weight: 600;
+}
+
+.lgd-form__label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+}
+
+.lgd-form__label label {
+        margin-bottom: 0;
+}
+
+.lgd-form__help {
+        font-size: 14px;
+        color: #6b7280;
+        margin-top: 4px;
+}
+
+.lgd-form__field input,
+.lgd-form__field textarea,
+.lgd-form__field select {
+        border: 1px solid #ccd0d4;
+        border-radius: 4px;
+        padding: 10px;
+        font-size: 16px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+}
+
+.lgd-form__actions {
+        margin-top: 24px;
+        display: flex;
+        gap: 12px;
+}
+
+.lgd-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        padding: 10px 18px;
+        font-size: 16px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+}
+
+.lgd-button--primary {
+        background: #0073aa;
+        color: #ffffff;
+}
+
+.lgd-button--secondary {
+        background: #f3f4f5;
+        color: #1d2327;
+}
+
+.lgd-button--small {
+        padding: 6px 12px;
+        font-size: 14px;
+}
+
+.lgd-notice {
+        padding: 12px 16px;
+        border-radius: 4px;
+        margin-bottom: 16px;
+        border: 1px solid transparent;
+}
+
+.lgd-notice--success {
+        background: #ecf7ed;
+        border-color: #46b450;
+        color: #1d4f1f;
+}
+
+.lgd-notice--error {
+        background: #fbeaea;
+        border-color: #dc3232;
+        color: #86181d;
+}
+
+.lgd-notice--warning {
+        background: #fff8e5;
+        border-color: #ffb900;
+        color: #8a5700;
+}
+
+.lgd-notice--info {
+        background: #f0f6fc;
+        border-color: #72aee6;
+        color: #0a5396;
+}
+
+.lgd-dashboard {
+        display: grid;
+        gap: 24px;
+}
+
+.lgd-dashboard__section,
+.lgd-dashboard__summary {
+        background: #ffffff;
+        border: 1px solid #e2e4e7;
+        border-radius: 6px;
+        padding: 24px;
+}
+
+.lgd-dashboard__stat {
+        margin: 0 0 12px;
+}
+
+.lgd-table {
+        width: 100%;
+        border-collapse: collapse;
+}
+
+.lgd-table th,
+.lgd-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e2e4e7;
+        text-align: left;
+}
+
+.lgd-table__actions {
+        display: flex;
+        gap: 8px;
+}
+
+.lgd-leaderboard {
+        background: #ffffff;
+        border: 1px solid #e2e4e7;
+        border-radius: 6px;
+        padding: 24px;
+}
+
+.lgd-leaderboard ol {
+        list-style: decimal;
+        margin: 0;
+        padding-left: 20px;
+}
+
+.lgd-leaderboard__name {
+        font-weight: 600;
+}
+
+.lgd-leaderboard__points {
+        float: right;
+}
+
+.lgd-ad-slot {
+        border: 1px solid #e2e4e7;
+        border-radius: 6px;
+        padding: 16px;
+        margin-top: 24px;
+        background: #f8f9fa;
+}
+
+.lgd-ad {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e2e4e7;
+}
+
+.lgd-ad:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+}
+
+.lgd-ad__image img {
+        max-width: 120px;
+        border-radius: 4px;
+}
+
+.lgd-help {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+}
+
+.lgd-help__icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 1px solid #ccd0d4;
+        background: #f3f4f5;
+        color: #111827;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.lgd-help__icon:focus,
+.lgd-help__icon:hover {
+        outline: none;
+        background: #0073aa;
+        border-color: #0073aa;
+        color: #ffffff;
+}
+
+.lgd-help__tooltip {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        background: #111827;
+        color: #f9fafb;
+        padding: 10px 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        line-height: 1.4;
+        min-width: 220px;
+        max-width: 280px;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-4px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 1000;
+}
+
+.lgd-help[data-lgd-open="true"] .lgd-help__tooltip {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+}
+
+.lgd-screen-reader-text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+}
+
+.lgd-heading-with-help {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 12px;
+}
+
+.lgd-heading-with-help .lgd-help__tooltip {
+        right: auto;
+        left: 0;
+}
+
+.lgd-support-callout {
+        margin-top: 24px;
+        padding: 16px 18px;
+        border-radius: 6px;
+        background: #f0f6fc;
+        border: 1px solid #72aee6;
+}
+
+.lgd-support-callout__text {
+        margin: 0 0 8px;
+        color: #0a5396;
+}
+
+.lgd-support-callout__action {
+        margin: 0;
+}
+
+.lgd-support-callout__action a {
+        color: #0a5396;
+        font-weight: 600;
+        text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+        .lgd-ad {
+                flex-direction: column;
+        }
+
+        .lgd-table__actions {
+                flex-direction: column;
+        }
+
+        .lgd-help__tooltip {
+                max-width: 90vw;
+        }
+}
