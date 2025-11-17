@@ -28,6 +28,9 @@ if ( ! defined( 'LGD_PLUGIN_URL' ) ) {
         define( 'LGD_PLUGIN_URL', plugin_dir_url( LGD_PLUGIN_FILE ) );
 }
 
+require_once LGD_PLUGIN_DIR . 'includes/class-lgd-admin.php';
+require_once LGD_PLUGIN_DIR . 'includes/class-lgd-activity.php';
+require_once LGD_PLUGIN_DIR . 'includes/class-lgd-social-login.php';
 require_once LGD_PLUGIN_DIR . 'includes/class-lgd-frontend.php';
 require_once LGD_PLUGIN_DIR . 'includes/class-lgd-gamification.php';
 require_once LGD_PLUGIN_DIR . 'includes/class-lgd-ads.php';
@@ -80,6 +83,27 @@ if ( ! class_exists( 'Local_Gamified_Directory' ) ) {
                  * @var LGD_Frontend|null
                  */
                 private $frontend = null;
+
+                /**
+                 * Admin tools instance.
+                 *
+                 * @var LGD_Admin|null
+                 */
+                private $admin = null;
+
+                /**
+                 * Activity tracker instance.
+                 *
+                 * @var LGD_Activity|null
+                 */
+                private $activity = null;
+
+                /**
+                 * Social login handler instance.
+                 *
+                 * @var LGD_Social_Login|null
+                 */
+                private $social_login = null;
 
                 /**
                  * Gamification handler instance.
@@ -144,6 +168,18 @@ if ( ! class_exists( 'Local_Gamified_Directory' ) ) {
                  * Instantiate supporting modules.
                  */
                 public function bootstrap_modules() {
+                        if ( null === $this->admin ) {
+                                $this->admin = new LGD_Admin( $this );
+                        }
+
+                        if ( null === $this->activity ) {
+                                $this->activity = new LGD_Activity( $this );
+                        }
+
+                        if ( null === $this->social_login ) {
+                                $this->social_login = new LGD_Social_Login( $this );
+                        }
+
                         if ( null === $this->gamification ) {
                                 $this->gamification = new LGD_Gamification( $this );
                         }
@@ -171,6 +207,33 @@ if ( ! class_exists( 'Local_Gamified_Directory' ) ) {
                 }
 
                 /**
+                 * Retrieve the admin handler.
+                 *
+                 * @return LGD_Admin|null
+                 */
+                public function get_admin() {
+                        return $this->admin;
+                }
+
+                /**
+                 * Retrieve the activity tracker.
+                 *
+                 * @return LGD_Activity|null
+                 */
+                public function get_activity() {
+                        return $this->activity;
+                }
+
+                /**
+                 * Retrieve the social login handler.
+                 *
+                 * @return LGD_Social_Login|null
+                 */
+                public function get_social_login() {
+                        return $this->social_login;
+                }
+
+                /**
                  * Retrieve the advertising handler.
                  *
                  * @return LGD_Ads|null
@@ -186,6 +249,169 @@ if ( ! class_exists( 'Local_Gamified_Directory' ) ) {
                  */
                 public function get_subscriptions() {
                         return $this->subscriptions;
+                }
+
+                /**
+                 * Retrieve a plugin setting.
+                 *
+                 * @param string $key     Setting key without prefix.
+                 * @param mixed  $default Default value if unset.
+                 *
+                 * @return mixed
+                 */
+                /**
+                 * Retrieve the list of toggleable features.
+                 *
+                 * @return array
+                 */
+                public function get_features() {
+                        $features = array(
+                                'business_submissions' => array(
+                                        'label'       => __( 'Business submissions', 'local-gamified-directory' ),
+                                        'description' => __( 'Allow business owners to create and manage business listings.', 'local-gamified-directory' ),
+                                ),
+                                'classifieds' => array(
+                                        'label'       => __( 'Classifieds', 'local-gamified-directory' ),
+                                        'description' => __( 'Enable community members to post classified listings.', 'local-gamified-directory' ),
+                                ),
+                                'ads' => array(
+                                        'label'       => __( 'Advertising', 'local-gamified-directory' ),
+                                        'description' => __( 'Allow businesses to create and run sponsored ads.', 'local-gamified-directory' ),
+                                ),
+                                'gamification' => array(
+                                        'label'       => __( 'Gamification', 'local-gamified-directory' ),
+                                        'description' => __( 'Award points, badges, and leaderboards for engagement.', 'local-gamified-directory' ),
+                                ),
+                                'leaderboard' => array(
+                                        'label'       => __( 'Leaderboards', 'local-gamified-directory' ),
+                                        'description' => __( 'Display leaderboards showcasing top community members.', 'local-gamified-directory' ),
+                                ),
+                                'claiming' => array(
+                                        'label'       => __( 'Business claiming', 'local-gamified-directory' ),
+                                        'description' => __( 'Allow users to request ownership of existing business listings.', 'local-gamified-directory' ),
+                                ),
+                                'frontend_dashboard' => array(
+                                        'label'       => __( 'User dashboard', 'local-gamified-directory' ),
+                                        'description' => __( 'Provide the front-end dashboard for managing submissions.', 'local-gamified-directory' ),
+                                ),
+                                'social_login' => array(
+                                        'label'       => __( 'Social login', 'local-gamified-directory' ),
+                                        'description' => __( 'Let users sign in with Google or Facebook.', 'local-gamified-directory' ),
+                                ),
+                                'activity_tracking' => array(
+                                        'label'       => __( 'Activity tracking', 'local-gamified-directory' ),
+                                        'description' => __( 'Record user activity for analytics and abuse detection.', 'local-gamified-directory' ),
+                                ),
+                        );
+
+                        /**
+                         * Filter the list of directory features.
+                         *
+                         * @since 0.1.0
+                         *
+                         * @param array $features Feature definitions.
+                         */
+                        return apply_filters( 'lgd_features', $features );
+                }
+
+                /**
+                 * Determine if a feature is enabled globally.
+                 *
+                 * @param string $feature Feature key.
+                 *
+                 * @return bool
+                 */
+                public function is_feature_enabled( $feature ) {
+                        $features = $this->get_features();
+
+                        if ( ! isset( $features[ $feature ] ) ) {
+                                return true;
+                        }
+
+                        $flags = get_option( LGD_Admin::OPTION_FEATURE_FLAGS, array() );
+
+                        if ( isset( $flags[ $feature ] ) ) {
+                                return (bool) $flags[ $feature ];
+                        }
+
+                        return true;
+                }
+
+                /**
+                 * Check if a user currently has access to a feature.
+                 *
+                 * @param int    $user_id User ID.
+                 * @param string $feature Feature key.
+                 *
+                 * @return bool
+                 */
+                public function user_has_feature_access( $user_id, $feature ) {
+                        if ( ! $this->is_feature_enabled( $feature ) ) {
+                                return false;
+                        }
+
+                        $user_id = absint( $user_id );
+                        if ( $user_id <= 0 ) {
+                                return false;
+                        }
+
+                        if ( $this->is_user_suspended( $user_id ) ) {
+                                return false;
+                        }
+
+                        $disabled = (array) get_user_meta( $user_id, LGD_Admin::META_DISABLED_FEATURES, true );
+                        if ( in_array( $feature, $disabled, true ) ) {
+                                return false;
+                        }
+
+                        $enabled = (array) get_user_meta( $user_id, LGD_Admin::META_ENABLED_FEATURES, true );
+                        if ( in_array( $feature, $enabled, true ) ) {
+                                return true;
+                        }
+
+                        $role_map = get_option( LGD_Admin::OPTION_FEATURE_ROLE_MAP, array() );
+                        if ( ! empty( $role_map[ $feature ] ) ) {
+                                $user = get_userdata( $user_id );
+
+                                if ( ! $user ) {
+                                        return false;
+                                }
+
+                                if ( empty( array_intersect( (array) $user->roles, (array) $role_map[ $feature ] ) ) ) {
+                                        return false;
+                                }
+                        }
+
+                        return true;
+                }
+
+                /**
+                 * Determine whether a user is currently suspended.
+                 *
+                 * @param int $user_id User ID.
+                 *
+                 * @return bool
+                 */
+                public function is_user_suspended( $user_id ) {
+                        $status = get_user_meta( $user_id, LGD_Admin::META_ACCOUNT_STATUS, true );
+
+                        if ( 'suspended' !== $status ) {
+                                return false;
+                        }
+
+                        $until = get_user_meta( $user_id, LGD_Admin::META_SUSPENDED_UNTIL, true );
+
+                        if ( ! empty( $until ) ) {
+                                $timestamp = strtotime( $until . ' 23:59:59' );
+                                if ( $timestamp && $timestamp <= current_time( 'timestamp', true ) ) {
+                                        delete_user_meta( $user_id, LGD_Admin::META_ACCOUNT_STATUS );
+                                        delete_user_meta( $user_id, LGD_Admin::META_SUSPENDED_UNTIL );
+                                        delete_user_meta( $user_id, LGD_Admin::META_SUSPENSION_REASON );
+                                        return false;
+                                }
+                        }
+
+                        return true;
                 }
 
                 /**
@@ -294,10 +520,15 @@ if ( ! class_exists( 'Local_Gamified_Directory' ) ) {
                 public function maybe_schedule_events( $force = false ) {
                         if ( $force ) {
                                 wp_clear_scheduled_hook( 'lgd_expire_classifieds' );
+                                wp_clear_scheduled_hook( 'lgd_purge_activity_logs' );
                         }
 
                         if ( ! wp_next_scheduled( 'lgd_expire_classifieds' ) ) {
                                 wp_schedule_event( time(), 'daily', 'lgd_expire_classifieds' );
+                        }
+
+                        if ( ! wp_next_scheduled( 'lgd_purge_activity_logs' ) ) {
+                                wp_schedule_event( time(), 'daily', 'lgd_purge_activity_logs' );
                         }
                 }
 
@@ -589,9 +820,12 @@ Thank you,
                         self::instance()->register_post_types();
                         self::instance()->register_taxonomies();
                         self::instance()->maybe_schedule_events( true );
+                        LGD_Admin::activate();
+                        LGD_Activity::activate();
                         LGD_Gamification::activate();
                         LGD_Ads::activate();
                         LGD_Subscriptions::activate();
+                        LGD_Social_Login::activate();
                         flush_rewrite_rules();
                 }
 
@@ -600,6 +834,7 @@ Thank you,
                 */
                 public static function deactivate() {
                         wp_clear_scheduled_hook( 'lgd_expire_classifieds' );
+                        wp_clear_scheduled_hook( 'lgd_purge_activity_logs' );
                         flush_rewrite_rules();
                 }
 
