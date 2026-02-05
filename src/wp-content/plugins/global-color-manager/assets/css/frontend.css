@@ -1,0 +1,63 @@
+#gcm-toggle {
+	position: fixed;
+	right: 0;
+	top: 40%;
+	z-index: 99999;
+	background: #1d2327;
+	color: #fff;
+	padding: 10px 8px;
+	border: 0;
+	cursor: pointer;
+}
+
+#gcm-sidebar {
+	position: fixed;
+	top: 0;
+	right: -360px;
+	width: 360px;
+	height: 100vh;
+	background: #fff;
+	border-left: 1px solid #dcdcde;
+	z-index: 99998;
+	transition: right 0.2s ease;
+	overflow: auto;
+	padding: 16px;
+}
+
+#gcm-sidebar.is-open {
+	right: 0;
+}
+
+#gcm-color-list {
+	margin: 16px 0;
+}
+
+.gcm-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.gcm-row .gcm-swatch {
+	width: 18px;
+	height: 18px;
+	border: 1px solid #dcdcde;
+	border-radius: 2px;
+}
+
+.gcm-row .gcm-meta {
+	display: flex;
+	flex-direction: column;
+	font-size: 12px;
+}
+
+.gcm-row .gcm-meta em {
+	font-style: normal;
+	color: #50575e;
+}
+
+.gcm-actions {
+	display: grid;
+	gap: 10px;
+}

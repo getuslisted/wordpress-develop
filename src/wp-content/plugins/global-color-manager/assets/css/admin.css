@@ -1,0 +1,14 @@
+.gcm-admin-wrap .gcm-admin-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	padding: 16px;
+	margin-top: 16px;
+}
+
+.gcm-table .gcm-swatch {
+	display: inline-block;
+	width: 24px;
+	height: 24px;
+	border-radius: 3px;
+	border: 1px solid #dcdcde;
+}
